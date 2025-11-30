@@ -17,7 +17,7 @@ When building systems, we need to connect multiple stateful resources:
 - A queue worker processing messages
 - An http server handling requests (with the db and everything else)
 
-A lot of coordination need to be done right in order to get maintainable systems that survive the test of time. It's not just about starting and stopping resources, it's about ensuring that the dependencies are resolved in the correct order, and that the resources are stopped gracefully and given the chance to flush ongoing work or stop what they're doing in the correct order. This database transactions, in-flight requests, queue workers and other sensitive processes that need to stop gracefully.
+A lot of coordination need to be done right in order to get maintainable systems that survive the test of time. It's not just about starting and stopping resources, it's about ensuring that the dependencies are resolved in the correct order, and that the resources are stopped gracefully and given the chance to flush ongoing work or stop what they're doing in the correct order. Think database transactions, in-flight requests, queue workers running jobs and other sensitive processes that need to stop gracefully.
 
 This contrasts with the current state of JS development where state is handled recklessly and implicitly, and dependencies are discovered and loaded based on brittle module load order or other weird heuristics.
 
