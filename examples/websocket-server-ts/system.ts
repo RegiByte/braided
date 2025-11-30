@@ -1,8 +1,12 @@
-const { defineResource, startSystem, haltSystem } = require("braided");
-const express = require("express");
-const { createServer } = require("http");
-const { Server } = require("socket.io");
-const path = require("path");
+import {
+  defineResource,
+  startSystem,
+  haltSystem,
+  StartedResource,
+} from "braided";
+import express from "express";
+import { createServer } from "http";
+import { Server } from "socket.io";
 
 /**
  * Configuration Resource
@@ -11,7 +15,7 @@ const path = require("path");
 const configResource = defineResource({
   start: () => {
     return {
-      port: process.env.PORT || 3000,
+      port: parseInt(process.env.PORT || "3000", 10),
       corsOrigin: process.env.CORS_ORIGIN || "*",
       shutdownTimeout: 5000, // ms to wait for graceful shutdown
     };
@@ -26,8 +30,8 @@ const configResource = defineResource({
  * Creates an Express app with a simple HTML client
  */
 const httpServerResource = defineResource({
-  dependencies: ["config"],
-  start: ({ config }) => {
+  dependencies: ["config"] as const,
+  start: ({ config }: { config: StartedResource<typeof configResource> }) => {
     const app = express();
     const httpServer = createServer(app);
 
@@ -104,7 +108,7 @@ const httpServerResource = defineResource({
 </head>
 <body>
   <div class="container">
-    <h1>🧶 Braided WebSocket Example</h1>
+    <h1>🧶 Braided WebSocket Example (TypeScript)</h1>
     <div id="status" class="status disconnected">Disconnected</div>
     
     <div>
@@ -176,12 +180,16 @@ const httpServerResource = defineResource({
         console.log(`🌐 HTTP Server listening on port ${config.port}`);
         resolve(httpServer);
       });
-    });
+    }) as Promise<ReturnType<typeof httpServer.listen> | null>;
   },
   halt: async (httpServer) => {
-    return new Promise((resolve) => {
+    return new Promise<void>((resolve) => {
       console.log("🌐 Closing HTTP server...");
-      httpServer.close(() => {
+      if (!httpServer) {
+        resolve();
+        return;
+      }
+      httpServer?.close(() => {
         console.log("🌐 HTTP server closed");
         resolve();
       });
@@ -194,7 +202,7 @@ const httpServerResource = defineResource({
  * Manages the WebSocket server instance
  */
 const socketServerResource = defineResource({
-  dependencies: ["config", "httpServer"],
+  dependencies: ["config", "httpServer"] as const,
   start: ({ config, httpServer }) => {
     const io = new Server(httpServer, {
       cors: {
@@ -207,7 +215,7 @@ const socketServerResource = defineResource({
     return io;
   },
   halt: async (io) => {
-    return new Promise((resolve) => {
+    return new Promise<void>((resolve) => {
       console.log("🔌 Closing Socket.IO server...");
       io.close(() => {
         console.log("🔌 Socket.IO server closed");
@@ -222,9 +230,13 @@ const socketServerResource = defineResource({
  * Tracks active connections and handles graceful disconnection
  */
 const connectionManagerResource = defineResource({
-  dependencies: ["socketServer"],
-  start: ({ socketServer }) => {
-    const connections = new Map();
+  dependencies: ["socketServer"] as const,
+  start: ({
+    socketServer,
+  }: {
+    socketServer: StartedResource<typeof socketServerResource>;
+  }) => {
+    const connections = new Map<string, { socket: any; connectedAt: Date }>();
 
     socketServer.on("connection", (socket) => {
       const connectionId = socket.id;
@@ -287,8 +299,14 @@ const connectionManagerResource = defineResource({
  * Handles business logic for incoming messages
  */
 const messageHandlerResource = defineResource({
-  dependencies: ["socketServer", "connectionManager"],
-  start: ({ socketServer, connectionManager }) => {
+  dependencies: ["socketServer", "connectionManager"] as const,
+  start: ({
+    socketServer,
+    connectionManager,
+  }: {
+    socketServer: StartedResource<typeof socketServerResource>;
+    connectionManager: StartedResource<typeof connectionManagerResource>;
+  }) => {
     const messageCount = { total: 0 };
 
     socketServer.on("connection", (socket) => {
@@ -298,7 +316,7 @@ const messageHandlerResource = defineResource({
       });
 
       // Handle incoming messages
-      socket.on("message", (data) => {
+      socket.on("message", (data: { text: string }) => {
         messageCount.total++;
         console.log(`📨 Message received from ${socket.id}: ${data.text}`);
 
@@ -345,7 +363,7 @@ const systemConfig = {
  * System Startup
  */
 async function main() {
-  console.log("🧶 Starting Braided WebSocket System...\n");
+  console.log("🧶 Starting Braided WebSocket System (TypeScript)...\n");
 
   const { system, errors } = await startSystem(systemConfig);
 
@@ -363,7 +381,7 @@ async function main() {
 
   // Graceful shutdown handler
   let isShuttingDown = false;
-  const shutdown = async (signal) => {
+  const shutdown = async (signal: string) => {
     if (isShuttingDown) {
       return;
     }

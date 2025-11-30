@@ -8,7 +8,7 @@
     // Environment Settings
     // See also https://aka.ms/tsconfig/module
     "target": "es2020",
-    "module": "NodeNext",
+    "module": "Preserve",
     "moduleResolution": "Bundler",
     "types": [],
     // For nodejs:
