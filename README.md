@@ -369,6 +369,8 @@ Halt all resources in reverse dependency order.
 4. **Testable by default** - No global state, easy to mock
 5. **Environment agnostic** - Works everywhere JavaScript runs
 6. **Type-safe** - Full TypeScript support with inference
+7. **Zero magic** - No decorators, no reflection, no "scanning" directories. Just data structures.
+8. **Unopinionated** - You don't have to marry your system to this library or change your coding style to fit it.
 
 ## Inspiration
 
