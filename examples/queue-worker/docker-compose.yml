@@ -1,0 +1,30 @@
+version: '3.8'
+
+services:
+  redis:
+    image: redis:7-alpine
+    container_name: braided-queue-redis
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    volumes:
+      - redis-data:/data
+
+  # Optional: Redis Commander for visualization
+  redis-commander:
+    image: rediscommander/redis-commander:latest
+    container_name: braided-redis-commander
+    environment:
+      - REDIS_HOSTS=local:redis:6379
+    ports:
+      - "8081:8081"
+    depends_on:
+      - redis
+
+volumes:
+  redis-data:
+

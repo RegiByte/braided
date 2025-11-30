@@ -1,0 +1,29 @@
+{
+  "name": "queue-worker-example",
+  "version": "1.0.0",
+  "description": "Queue worker with BullMQ and Redis using Braided for lifecycle management",
+  "main": "system.js",
+  "type": "commonjs",
+  "scripts": {
+    "start": "node system.js",
+    "dev": "node --watch system.js",
+    "docker:up": "docker-compose up -d",
+    "docker:down": "docker-compose down",
+    "docker:logs": "docker-compose logs -f redis"
+  },
+  "keywords": [
+    "braided",
+    "queue",
+    "bullmq",
+    "redis",
+    "worker"
+  ],
+  "author": "RegiByte",
+  "license": "ISC",
+  "dependencies": {
+    "braided": "^0.0.4",
+    "bullmq": "^5.28.2",
+    "ioredis": "^5.4.2"
+  }
+}
+

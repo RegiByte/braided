@@ -1,0 +1,31 @@
+{
+  "name": "cache-swapping-example",
+  "version": "1.0.0",
+  "description": "Demonstrates swappable cache implementations (Redis/In-Memory) using Braided",
+  "main": "system.js",
+  "type": "commonjs",
+  "scripts": {
+    "start": "node system.js",
+    "start:memory": "CACHE_TYPE=memory node system.js",
+    "start:redis": "CACHE_TYPE=redis node system.js",
+    "test": "node test-system.js",
+    "docker:up": "docker-compose up -d",
+    "docker:down": "docker-compose down",
+    "docker:logs": "docker-compose logs -f redis"
+  },
+  "keywords": [
+    "braided",
+    "cache",
+    "redis",
+    "testing",
+    "dependency-injection"
+  ],
+  "author": "RegiByte",
+  "license": "ISC",
+  "dependencies": {
+    "braided": "^0.0.4",
+    "express": "^4.21.2",
+    "ioredis": "^5.4.2"
+  }
+}
+

@@ -42,17 +42,27 @@ const httpServer = defineResource({
     app.use(router);
 
     return new Promise((resolve) => {
-      const server = app.listen(config.port, () => {
+      const server = app.listen(config.port, (error) => {
+        if (error) {
+          console.error("Error starting http server", error);
+          resolve(null);
+          return;
+        }
         console.log("Server is running!!");
         resolve(server);
       });
     });
   },
   halt: (app) => {
-    app.close((error) => {
-      if (error) {
-        console.error("Error closing http server", error);
-      }
+    return new Promise((resolve) => {
+      app.close((error) => {
+        if (error) {
+          console.error("Error closing http server", error);
+        } else {
+          console.log("Server closed");
+        }
+        resolve(null);
+      });
     });
   },
 });
@@ -68,10 +78,19 @@ startSystem(systemConfig).then(({ system, errors }) => {
     console.error("Errors starting system", errors);
   }
   console.log(
-    `Server is running on port http://localhost:${system.config.port}`
+    `\n✨ Server is running on http://localhost:${system.config.port}`
   );
+  console.log(`\n📖 Try it (copy-paste ready):`);
+  console.log(`   curl http://localhost:${system.config.port}`);
+  console.log(`\n🛑 Press Ctrl+C for graceful shutdown\n`);
 
-  process.on("SIGINT", async () => {
+  let isShuttingDown = false;
+  const shutdown = async (signal) => {
+    if (isShuttingDown) {
+      return;
+    }
+    isShuttingDown = true;
+    console.log(`Received ${signal}, initiating graceful shutdown...`);
     const { errors: haltErrors } = await haltSystem(systemConfig, system);
     if (haltErrors.size > 0) {
       console.error("Errors halting system", haltErrors);
@@ -80,5 +99,8 @@ startSystem(systemConfig).then(({ system, errors }) => {
     }
     console.log("System halted successfully");
     process.exit(0);
-  });
+  };
+
+  process.on("SIGINT", () => shutdown("SIGINT"));
+  process.on("SIGTERM", () => shutdown("SIGTERM"));
 });

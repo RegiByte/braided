@@ -1,0 +1,24 @@
+{
+  "name": "websocket-server-example",
+  "version": "1.0.0",
+  "description": "WebSocket server with graceful connection management using Braided",
+  "main": "system.js",
+  "type": "commonjs",
+  "scripts": {
+    "start": "node system.js",
+    "dev": "node --watch system.js"
+  },
+  "keywords": [
+    "braided",
+    "websocket",
+    "socket.io",
+    "lifecycle"
+  ],
+  "author": "RegiByte",
+  "license": "ISC",
+  "dependencies": {
+    "braided": "^0.0.4",
+    "socket.io": "^4.8.1",
+    "express": "^4.21.2"
+  }
+}
