@@ -11,7 +11,7 @@ const configResource = defineResource({
     };
   },
   halt: async () => {
-    console.log("Disposing of config resource")
+    console.log("Disposing of config resource");
     // Artifical delay on cleanup to simulate a slow resource draining in-flight work
     await new Promise((resolve) => setTimeout(resolve, 1000));
   },
