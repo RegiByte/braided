@@ -2,7 +2,7 @@
 
 > **Untangle your stateful resources.**
 
-A minimal, type-safe library for declarative system composition with dependency-aware lifecycle management. Inspired by Clojure's [Integrant](https://github.com/weavejester/integrant).
+A minimal, type-safe library for declarative system composition with dependency-aware lifecycle management. It serves the purpose of managing stateful resources in JS/TS apps. Inspired by Clojure's [Integrant](https://github.com/weavejester/integrant).
 
 ## The Problem
 
@@ -379,6 +379,19 @@ This library is inspired by:
 - [Integrant](https://github.com/weavejester/integrant) (Clojure)
 - Rich Hickey's ["Simple Made Easy"](https://www.infoq.com/presentations/Simple-Made-Easy/)
 - The need for better composition in JavaScript applications and my own real world experience with software development in enterprise environments
+
+# Behavior Summary
+
+This describes the behavior of the library in a nutshell and tries to answer common questions and concerns.
+
+- **How does the library knows in which order to start and stop the resources?**
+  - The library uses a topological sort algorithm to determine the correct order by starting the resources in dependency order and stopping them in reverse dependency order.
+- **What happens if a resource fails to start?**
+  - The system will continue starting other resources. Dependent resources receive `undefined` for failed dependencies. If it's unacceptable for your system to have undefined dependencies, you can assert on the dependencies before starting the resource, collect the errors at the end and handle them as you see fit.
+- **What happens if a resource fails to stop?**
+  - The system will continue halting other resources. The errors are collected and returned.
+- **Does it detect circular dependencies?**
+  - Yes, it will throw an error if it detects a circular dependency and you will see immediately what's wrong.
 
 ## License
 
