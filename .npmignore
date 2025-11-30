@@ -1,0 +1,26 @@
+# Source files
+src/
+
+# Tests
+*.spec.ts
+*.test.ts
+vitest.ts
+
+# Config files
+tsconfig.json
+.gitignore
+
+# Coverage
+coverage/
+
+# Development
+node_modules/
+.DS_Store
+*.log
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+

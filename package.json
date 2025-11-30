@@ -2,16 +2,38 @@
   "name": "braided",
   "version": "0.0.1",
   "type": "module",
+  "description": "Untangle your stateful resources. A minimal, type-safe library for declarative system composition with dependency-aware lifecycle management. Inspired by Clojure's Integrant.",
   "main": "./dist/core.cjs",
   "scripts": {
     "test": "vitest",
     "test:coverage": "vitest run --coverage",
-    "build": "zshy"
+    "build": "zshy",
+    "prepublishOnly": "npm run build && npm test"
   },
-  "keywords": [],
-  "author": "",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/RegiByte/braided.git"
+  },
+  "bugs": {
+    "url": "https://github.com/RegiByte/braided/issues"
+  },
+  "keywords": [
+    "dependency-injection",
+    "lifecycle",
+    "resource-management",
+    "system-composition",
+    "integrant",
+    "stateful",
+    "orchestration",
+    "topology",
+    "testing",
+    "modular",
+    "data-driven",
+    "declarative"
+  ],
+  "homepage": "https://github.com/RegiByte/braided#readme",
+  "author": "RegiByte",
   "license": "ISC",
-  "description": "",
   "devDependencies": {
     "@types/node": "^24.10.1",
     "@vitest/coverage-v8": "^4.0.14",
