@@ -1,6 +1,6 @@
 {
   "name": "braided",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "type": "module",
   "description": "Untangle your stateful resources. A minimal, type-safe library for declarative system composition with dependency-aware lifecycle management. Inspired by Clojure's Integrant.",
   "main": "./dist/core.cjs",
