@@ -5,7 +5,8 @@
   "description": "Untangle your stateful resources. A minimal, type-safe library for declarative system composition with dependency-aware lifecycle management. Inspired by Clojure's Integrant.",
   "main": "./dist/core.cjs",
   "scripts": {
-    "test": "vitest",
+    "test": "vitest run",
+    "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
     "build": "zshy",
     "prepublishOnly": "npm run build && npm test"
