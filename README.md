@@ -31,7 +31,7 @@ In the modern JavaScript development landscape, frameworks that should be librar
 
 ---
 
-Braided does not offer a solution to these problems, it empowers you with a tool to help you solve it in a way that suites your needs and coding style without forcing you to change your entire development process, as long as you can fit it in your system, you can use it as much or as little as you want.
+Braided does not offer a solution to these problems, it empowers you with a tool to help YOU solve them in a way that suites your needs and coding style without forcing you to change your entire development process, as long as you can fit it in your system, you can use it as much or as little as you want.
 
 **Braided** provides a data-driven approach to system composition:
 
