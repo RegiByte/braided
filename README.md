@@ -103,17 +103,17 @@ await haltSystem(system, running);
 
 ### Resources
 
-A **resource** is anything with a lifecycle or that needs to be managed and distributed to other parts of the system: database connections, HTTP servers, WebSocket/WebRTC connections, timers, caches, recovery mechanisms, observers, etc.
-Anything that you can't dispose off immediately spawning, that is a stateful thing, which is what you need to manage carefully.
+A **resource** is anything with a lifecycle or anything that needs to be managed and distributed to other parts of the system: database connections, HTTP servers, WebSocket/WebRTC connections, timers, caches, recovery mechanisms, observers, etc.
+Anything that you can't dispose of immediately after spawning, that is a stateful thing, which is what you need to manage carefully.
 
 ```typescript
-const resource = defineResource({
+const resource = defineResource<{ otherResource: TOtherResource }>({
   // Optional: declare dependencies
   dependencies: ["otherResource"],
 
   // Optional: validate dependencies before starting
   assert: ({ otherResource }) => {
-    if (!otherResource.isValid()) {
+    if (!isValid(otherResource)) {
       throw new Error("Invalid dependency");
     }
   },
