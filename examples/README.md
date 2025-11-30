@@ -7,6 +7,7 @@ Production-ready examples showing how to manage stateful resources with dependen
 All examples are available in both **JavaScript** (CommonJS) and **TypeScript** (ESM) versions.
 
 ### [HTTP Server](./http-server) | [TypeScript](./http-server-ts) - Start Here ⭐
+
 Basic Express server with graceful shutdown.
 
 ```bash
@@ -23,6 +24,7 @@ cd http-server-ts && npm install && npm start
 ---
 
 ### [WebSocket Server](./websocket-server) | [TypeScript](./websocket-server-ts) - Real-time Connections ⭐⭐
+
 Socket.IO server that notifies clients before shutdown.
 
 ```bash
@@ -40,6 +42,7 @@ cd websocket-server-ts && npm install && npm start
 ---
 
 ### [Queue Worker](./queue-worker) | [TypeScript](./queue-worker-ts) - Job Processing ⭐⭐⭐
+
 BullMQ worker that completes active jobs before shutdown.
 
 ```bash
@@ -61,6 +64,7 @@ npm install && npm start
 ---
 
 ### [Cache Swapping](./cache-swapping) | [TypeScript](./cache-swapping-ts) - The Killer Feature 🔥 ⭐⭐
+
 Same code, different cache: in-memory for testing, Redis for production.
 
 ```bash
@@ -80,23 +84,24 @@ npm test  # Full type safety, no Redis needed!
 
 ## Which Example Should I Start With?
 
-| If you want to... | JavaScript | TypeScript |
-|-------------------|------------|------------|
-| Learn the basics | [HTTP Server](./http-server) | [HTTP Server TS](./http-server-ts) |
-| See graceful shutdown | [WebSocket Server](./websocket-server) | [WebSocket Server TS](./websocket-server-ts) |
-| Understand the power | [Cache Swapping](./cache-swapping) 🤯 | [Cache Swapping TS](./cache-swapping-ts) 🔥 |
-| Build production systems | [Queue Worker](./queue-worker) | [Queue Worker TS](./queue-worker-ts) |
-| See interface-based programming | N/A | [Cache Swapping TS](./cache-swapping-ts) 🎯 |
+| If you want to...               | JavaScript                             | TypeScript                                   |
+| ------------------------------- | -------------------------------------- | -------------------------------------------- |
+| Learn the basics                | [HTTP Server](./http-server)           | [HTTP Server TS](./http-server-ts)           |
+| See graceful shutdown           | [WebSocket Server](./websocket-server) | [WebSocket Server TS](./websocket-server-ts) |
+| Understand the power            | [Cache Swapping](./cache-swapping) 🤯  | [Cache Swapping TS](./cache-swapping-ts) 🔥  |
+| Build production systems        | [Queue Worker](./queue-worker)         | [Queue Worker TS](./queue-worker-ts)         |
+| See interface-based programming | N/A                                    | [Cache Swapping TS](./cache-swapping-ts) 🎯  |
 
 ## Common Patterns
 
 ### 1. Define Resources
 
 **JavaScript:**
+
 ```javascript
 const resource = defineResource({
-  dependencies: ["other"],  // Optional
-  start: ({ other }) => {
+  dependencies: ["other"], // Optional
+  start: ({ other }: { other: TDependency }) => {
     // Create and return your resource
   },
   halt: (instance) => {
@@ -106,10 +111,11 @@ const resource = defineResource({
 ```
 
 **TypeScript:**
+
 ```typescript
 const resource = defineResource({
-  dependencies: ["other"] as const,  // 'as const' enables type inference
-  start: ({ other }) => {
+  dependencies: ["other"] as const, // 'as const' enables type inference
+  start: ({ other }: { other: TDependency }) => {
     // 'other' is fully typed automatically!
     // TypeScript knows all its properties and methods
   },
@@ -120,6 +126,7 @@ const resource = defineResource({
 ```
 
 ### 2. Compose System
+
 ```typescript
 const system = {
   config: configResource,
@@ -132,6 +139,7 @@ const { system } = await startSystem(systemConfig);
 ```
 
 ### 3. Start & Stop
+
 ```typescript
 const { system, errors } = await startSystem(config);
 // Use system.api, system.database, etc.
@@ -142,10 +150,12 @@ await haltSystem(config, system);
 ```
 
 ### 4. Handle Shutdown
+
 ```typescript
 let isShuttingDown = false;
 process.on("SIGINT", async () => {
-  if (isShuttingDown) { // if we're already shutting down, wait for it to complete
+  if (isShuttingDown) {
+    // if we're already shutting down, wait for it to complete
     return;
   }
   isShuttingDown = true;
@@ -158,6 +168,7 @@ process.on("SIGINT", async () => {
 ## Why Braided?
 
 **Traditional approach:**
+
 ```javascript
 // ❌ Implicit dependencies, brittle order
 const db = await connectDB();
@@ -173,12 +184,13 @@ db.close();
 ```
 
 **With Braided:**
+
 ```javascript
 // ✅ Explicit dependencies, automatic ordering
 const systemConfig = {
   db: dbResource,
   cache: cacheResource,
-  api: apiResource,      // depends on db, cache
+  api: apiResource, // depends on db, cache
   server: serverResource, // depends on api
 };
 
@@ -192,6 +204,7 @@ await haltSystem(systemConfig, system);
 No mocks needed - just swap resources:
 
 **JavaScript:**
+
 ```javascript
 // Production
 const system = { cache: redisCacheResource };
@@ -201,6 +214,7 @@ const system = { cache: memoryCacheResource };
 ```
 
 **TypeScript (with interface-based programming):**
+
 ```typescript
 // Define the interface
 interface CacheInterface {
@@ -210,8 +224,12 @@ interface CacheInterface {
 }
 
 // Both implementations satisfy the interface
-const memoryCache: CacheInterface = { /* ... */ };
-const redisCache: CacheInterface = { /* ... */ };
+const memoryCache: CacheInterface = {
+  /* ... */
+};
+const redisCache: CacheInterface = {
+  /* ... */
+};
 
 // API depends on interface, not implementation
 const apiResource = defineResource({
@@ -219,7 +237,7 @@ const apiResource = defineResource({
   start: ({ cache }: { cache: CacheInterface }) => {
     // Works with BOTH implementations!
     // Full type safety maintained!
-  }
+  },
 });
 ```
 
@@ -235,6 +253,7 @@ Same code, different implementation. See [Cache Swapping](./cache-swapping) or [
 ## Learning Path
 
 ### JavaScript Track
+
 1. **Day 1**: [HTTP Server](./http-server) - understand basics
 2. **Day 2**: [WebSocket Server](./websocket-server) - see connections
 3. **Day 3**: [Queue Worker](./queue-worker) - handle jobs
@@ -242,6 +261,7 @@ Same code, different implementation. See [Cache Swapping](./cache-swapping) or [
 5. **Day 5**: Build your own!
 
 ### TypeScript Track (Recommended for new projects!)
+
 1. **Day 1**: [HTTP Server TS](./http-server-ts) - understand basics + type inference
 2. **Day 2**: [WebSocket Server TS](./websocket-server-ts) - see type-safe connections
 3. **Day 3**: [Queue Worker TS](./queue-worker-ts) - handle type-safe jobs
