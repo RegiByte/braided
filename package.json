@@ -1,0 +1,39 @@
+{
+  "name": "braided",
+  "version": "0.0.1",
+  "type": "module",
+  "main": "./dist/core.cjs",
+  "scripts": {
+    "test": "vitest",
+    "test:coverage": "vitest run --coverage",
+    "build": "zshy"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "description": "",
+  "devDependencies": {
+    "@types/node": "^24.10.1",
+    "@vitest/coverage-v8": "^4.0.14",
+    "typescript": "^5.9.3",
+    "vitest": "^4.0.14",
+    "zshy": "^0.6.0"
+  },
+  "zshy": {
+    "exports": {
+      ".": "src/core.ts"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "module": "./dist/core.js",
+  "types": "./dist/core.d.cts",
+  "exports": {
+    ".": {
+      "types": "./dist/core.d.cts",
+      "import": "./dist/core.js",
+      "require": "./dist/core.cjs"
+    }
+  }
+}
