@@ -36,13 +36,19 @@ Notice how dependencies are fully typed through the chain:
 ```typescript
 const messageHandlerResource = defineResource({
   dependencies: ["socketServer", "connectionManager"] as const,
-  start: ({ socketServer, connectionManager }) => {
+  start: ({
+    socketServer,
+    connectionManager,
+  }: {
+    socketServer: StartedResource<typeof socketServerResource>;
+    connectionManager: StartedResource<typeof connectionManagerResource>;
+  }) => {
     // Both 'socketServer' and 'connectionManager' are fully typed!
     // TypeScript knows all their methods and properties
-    
+
     socketServer.on("connection", (socket) => {
       socket.emit("message", {
-        text: `Welcome! You are user #${connectionManager.getConnectionCount()}`
+        text: `Welcome! You are user #${connectionManager.getConnectionCount()}`,
         // ✅ getConnectionCount() is autocompleted!
       });
     });
@@ -65,11 +71,13 @@ const messageHandlerResource = defineResource({
 ## Features Demonstrated
 
 ### 1. Connection Tracking
+
 - Maintains a Map of active connections
 - Broadcasts user count to all clients
 - Handles disconnections automatically
 
 ### 2. Graceful Shutdown
+
 ```
 🛑 Received SIGINT, initiating graceful shutdown...
 
@@ -89,6 +97,7 @@ const messageHandlerResource = defineResource({
 ```
 
 ### 3. Real-time Messaging
+
 - Echo messages back to sender
 - Broadcast to other connected clients
 - Welcome messages for new connections
@@ -126,6 +135,7 @@ open http://localhost:3000
 ## Comparison with JavaScript Version
 
 The [JavaScript version](../websocket-server) has identical functionality. This TypeScript version adds:
+
 - ✅ Full type inference across all resources
 - ✅ Autocomplete for all dependency methods
 - ✅ Compile-time safety for refactoring
@@ -139,4 +149,3 @@ The [JavaScript version](../websocket-server) has identical functionality. This 
 ---
 
 **Built with Braided** 🧶 **+ TypeScript** 💙
-

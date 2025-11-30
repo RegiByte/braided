@@ -44,11 +44,19 @@ Notice how all types flow through the system:
 ```typescript
 const workerResource = defineResource({
   dependencies: ["config", "redis", "queue"] as const,
-  start: async ({ config, redis }) => {
+  start: async ({
+    config,
+    redis,
+    queue: _, // not used, but dependency is required for correct startup order
+  }: {
+    config: StartedResource<typeof configResource>;
+    redis: StartedResource<typeof redisResource>;
+    queue: StartedResource<typeof queueResource>;
+  }) => {
     // 'config', 'redis', and 'queue' are all fully typed!
     // TypeScript knows config.worker.concurrency exists
     // TypeScript knows redis has all ioredis methods
-    
+
     const processJob = async (job: Job) => {
       const duration = job.data.duration || 1000;
       // ✅ Full autocomplete on job properties
@@ -78,12 +86,14 @@ const workerResource = defineResource({
 ## Features Demonstrated
 
 ### 1. Job Processing
+
 - Creates 10 demo jobs with different types
 - Processes 2 jobs concurrently
 - Simulates work with delays
 - Demonstrates retry logic (job #3 fails once)
 
 ### 2. Graceful Shutdown
+
 ```
 🛑 Received SIGINT, initiating graceful shutdown...
 ⏳ Waiting for active jobs to complete...
@@ -109,6 +119,7 @@ const workerResource = defineResource({
 ```
 
 ### 3. Job Types
+
 - `send-email`: 1.5s processing time
 - `process-image`: 2s processing time
 - `generate-report`: 3s processing time
@@ -160,6 +171,7 @@ npm run docker:down
 ## Comparison with JavaScript Version
 
 The [JavaScript version](../queue-worker) has identical functionality. This TypeScript version adds:
+
 - ✅ Type-safe job data structures
 - ✅ Autocomplete for all configuration options
 - ✅ Compile-time safety for Redis operations
@@ -173,4 +185,3 @@ The [JavaScript version](../queue-worker) has identical functionality. This Type
 ---
 
 **Built with Braided** 🧶 **+ TypeScript** 💙
-
