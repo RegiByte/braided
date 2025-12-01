@@ -404,3 +404,10 @@ Issues and PRs welcome! This library has been battle-tested in at least one real
 ---
 
 **Untangle your code. Compose your systems. Ship with confidence. Braid them intentionally and elegantly.** 🧶
+
+
+## React Adapter
+
+There is a React adapter for Braided that you can use to manage systems independent of the React lifecycle.
+
+See [Braided React](https://github.com/RegiByte/braided-react) for more details.

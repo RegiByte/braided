@@ -108,3 +108,4 @@ export const redisCacheResource = defineResource<{ config: ConfigInterface }>({
     console.log("🔴 Redis cache disconnected");
   },
 });
+
