@@ -1,24 +1,20 @@
-export { topologicalSort } from "./topological-sort";
 export { defineResource } from "./resource";
-export { startSystem, haltSystem } from "./system";
-export {
-  buildTopology,
-  formatTopology,
-  toMermaid,
-  toDot,
-  toJSON,
-} from "./topology";
 export type {
   Resource,
   ResourceConfig,
-  StartedSystem,
   StartedResource,
+  StartedSystem,
   SystemConfig,
-  SystemStartResult,
   SystemHaltResult,
+  SystemStartResult,
 } from "./resource";
-export type {
-  SystemTopology,
-  TopologyLayer,
-  TopologyNode,
+export { haltSystem, startSystem } from "./system";
+export { topologicalSort } from "./topological-sort";
+export {
+  buildTopology,
+  formatTopology,
+  toDot,
+  toJSON,
+  toMermaid,
 } from "./topology";
+export type { SystemTopology, TopologyLayer, TopologyNode } from "./topology";
