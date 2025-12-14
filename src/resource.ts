@@ -7,37 +7,68 @@
  */
 
 /**
+ * Expand - Utility type that forces TypeScript to expand type aliases
+ * This makes hover tooltips show the full type definition instead of just the alias name
+ *
+ * Borrowed from Emergent's type system for consistent developer experience.
+ */
+type Expand<T> = T extends (...args: any[]) => any
+  ? T
+  : T extends object
+  ? { [K in keyof T]: T[K] } & {}
+  : T;
+
+/**
+ * Infer dependencies from the start function's first parameter
+ */
+type InferDeps<TStart> = TStart extends (deps: infer D) => any
+  ? D
+  : Record<string, unknown>;
+
+/**
+ * Infer resource instance type from start function's return type
+ */
+type InferResource<TStart> = TStart extends (deps: any) => infer R
+  ? Awaited<R>
+  : unknown;
+
+/**
  * Defines the configuration for a stateful resource.
  *
- * @template Deps - Record of dependency names to their types
- * @template T - The type of the resource instance returned by start()
+ * Dependencies are automatically inferred from the start function's parameter.
+ * Resource type is automatically inferred from the start function's return type.
+ *
+ * @template TStart - The start function type (dependencies and return type inferred from this)
  */
-export type ResourceConfig<TDeps extends Record<string, any> = any, T = any> = {
+export type ResourceConfig<
+  TStart extends (deps: any) => any = (deps: Record<string, unknown>) => any
+> = {
   /** Array of resource IDs this resource depends on */
-  dependencies?: Array<keyof TDeps>;
+  dependencies?: Array<keyof InferDeps<TStart>>;
+
   /**
    * Assert that the dependencies are valid.
-   * @param deps - The dependencies to assert
+   * @param deps - The dependencies to assert (type inferred from start parameter)
    * @returns void, should throw if the dependencies are invalid
    */
-  assert?: (deps: TDeps) => void | Promise<void>;
+  assert?: (deps: Expand<InferDeps<TStart>>) => void | Promise<void>;
 
   /**
    * Start the resource, receiving resolved dependencies.
    * Can be async for resources that need async initialization.
    *
-   * @param deps - Resolved dependency instances
+   * @param deps - Resolved dependency instances (type defines the shape)
    * @returns The started resource instance
    */
-  start: (deps: TDeps) => T | Promise<T>;
+  start: TStart;
 
   /**
    * Halt the resource, receiving the started instance.
    * Called in reverse dependency order during system shutdown.
    *
-   * @param instance - The resource instance to halt
+   * @param instance - The resource instance to halt (type inferred from start return)
    */
-  halt: (instance: T) => void | Promise<void>;
+  halt: (instance: Expand<InferResource<TStart>>) => void | Promise<void>;
 };
 
 /**
@@ -61,32 +92,36 @@ export type ResourceStatus =
  * Internal type used by the resource system orchestrator.
  */
 export type Resource<
-  TDeps extends Record<string, any> = any,
-  T = any
-> = ResourceConfig<TDeps, T> & {
+  TStart extends (deps: any) => any = (deps: Record<string, unknown>) => any
+> = ResourceConfig<TStart> & {
   _status: ResourceStatus;
-  _instance?: T;
+  _instance?: InferResource<TStart>;
   _error?: Error;
 };
 
-export type StartedResource<T extends ResourceConfig> = Awaited<
-  ReturnType<T["start"]>
->;
+/**
+ * Extract the started resource type from a ResourceConfig
+ *
+ * This uses Expand to show the full type definition in IDE tooltips
+ * instead of just showing the type alias name.
+ */
+export type StartedResource<T extends ResourceConfig<any>> =
+  T extends ResourceConfig<infer TStart>
+    ? Expand<InferResource<TStart>>
+    : never;
 
 /**
  * A system configuration is a record of resource IDs to resource configs.
  * Accepts resources with any dependency types.
  */
-export type SystemConfig = Record<string, ResourceConfig>;
+export type SystemConfig = Record<string, ResourceConfig<any>>;
 
 /**
  * A started system maps resource IDs to their started instances.
  * Type-safe extraction of instance types from resource configs.
  */
 export type StartedSystem<TConfig extends SystemConfig> = {
-  [K in keyof TConfig]: TConfig[K] extends ResourceConfig<any, infer T>
-    ? T
-    : never;
+  [K in keyof TConfig]: StartedResource<TConfig[K]>;
 };
 
 /**
@@ -109,25 +144,42 @@ export type SystemHaltResult = {
 
 /**
  * Helper function to define a resource with full type inference.
- * Ensures dependencies are properly typed and provides IDE autocomplete.
+ *
+ * Dependencies are inferred from the start function's parameter type.
+ * Resource type is inferred from the start function's return type.
+ * The halt function's parameter is automatically typed based on start's return.
  *
  * @example
  * ```typescript
+ * // No dependencies - simple resource
  * const counterResource = defineResource({
  *   start: () => ({ count: 0, increment: () => count++ }),
  *   halt: (counter) => console.log('Final count:', counter.count)
  * })
  *
+ * // With dependencies - types inferred from parameter
  * const loggerResource = defineResource({
  *   dependencies: ['counter'],
- *   start: ({ counter }) => new Logger(counter),
+ *   start: ({ counter }: { counter: StartedResource<typeof counterResource> }) => {
+ *     return new Logger(counter)
+ *   },
+ *   halt: (logger) => logger.close() // logger type inferred!
+ * })
+ *
+ * // Alternative: inline type for better IDE support
+ * type LoggerDeps = {
+ *   counter: StartedResource<typeof counterResource>;
+ * }
+ *
+ * const loggerResource = defineResource({
+ *   dependencies: ['counter'] as const,
+ *   start: ({ counter }: LoggerDeps) => new Logger(counter),
  *   halt: (logger) => logger.close()
  * })
  * ```
  */
-export function defineResource<
-  TDeps extends Record<string, any> = any,
-  T = any
->(config: ResourceConfig<TDeps, T>): ResourceConfig<TDeps, T> {
+export function defineResource<TStart extends (deps: any) => any>(
+  config: ResourceConfig<TStart>
+): ResourceConfig<TStart> {
   return config;
 }
