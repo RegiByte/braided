@@ -323,9 +323,9 @@ const server1 = await startSystem(serverConfig);
 const server2 = await startSystem(serverConfig);
 ```
 
-### System Topology Visualization 🎉
+### System Topology Visualization
 
-Visualize and understand your system's dependency structure! Every call to `startSystem` now includes a `topology` object:
+Visualize and understand your system's dependency structure! Every call to `startSystem` includes a `topology` object:
 
 ```typescript
 const { system, errors, topology } = await startSystem(config);
@@ -391,8 +391,6 @@ fs.writeFileSync('system.dot', dot);
 - 🧪 Validate system structure in tests
 - 📊 Analyze system complexity
 
-See `examples/topology-visualization.ts` for a complete example!
-
 ## API Reference
 
 ### `defineResource(config)`
@@ -416,7 +414,7 @@ Start all resources in dependency order.
 
 - `config: SystemConfig` - Object mapping resource IDs to resource configs
 
-**Returns:** `Promise<{ system: StartedSystem<TConfig>, errors: Map<string, Error> }>`
+**Returns:** `Promise<{ system: StartedSystem<TConfig>, errors: Map<string, Error>, topology: SystemTopology }>`
 
 ### `haltSystem<TConfig>(config, system)`
 
