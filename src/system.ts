@@ -14,6 +14,7 @@ import type {
   SystemHaltResult,
 } from "./resource";
 import { topologicalSort } from "./topological-sort";
+import { buildTopology } from "./topology";
 
 /**
  * Starts all resources in a system configuration in dependency order.
@@ -30,13 +31,14 @@ import { topologicalSort } from "./topological-sort";
  *
  * @example
  * ```typescript
- * const { system, errors } = await startSystem({
+ * const { system, errors, topology } = await startSystem({
  *   store: storeResource,
  *   runtime: runtimeResource, // depends on store
  *   network: networkResource   // depends on runtime
  * })
  * // system.store, system.runtime, system.network are now started
  * // Check errors.size to see if any resources failed
+ * // topology is a graph/layer representation of the system's dependency structure
  * ```
  */
 export async function startSystem<TConfig extends SystemConfig>(
@@ -56,6 +58,9 @@ export async function startSystem<TConfig extends SystemConfig>(
 
   // Get dependency-ordered list of resource IDs
   const order = topologicalSort(resources);
+
+  // Build topology for visualization
+  const topology = buildTopology(resources, order);
 
   // Start each resource in order
   for (const id of order) {
@@ -97,6 +102,7 @@ export async function startSystem<TConfig extends SystemConfig>(
   return {
     system: started as StartedSystem<TConfig>,
     errors,
+    topology,
   };
 }
 

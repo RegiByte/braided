@@ -132,6 +132,8 @@ export type SystemStartResult<TConfig extends SystemConfig> = {
   system: StartedSystem<TConfig>;
   /** Map of resource IDs to errors that occurred during startup */
   errors: Map<string, Error>;
+  /** Topology graph showing dependency structure */
+  topology: import("./topology").SystemTopology;
 };
 
 /**

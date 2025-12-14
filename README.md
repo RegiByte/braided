@@ -107,19 +107,19 @@ A **resource** is anything with a lifecycle or anything that needs to be managed
 Anything that you can't dispose of immediately after spawning, that is a stateful thing, which is what you need to manage carefully.
 
 ```typescript
-const resource = defineResource<{ otherResource: TOtherResource }>({
+const resource = defineResource({
   // Optional: declare dependencies
   dependencies: ["otherResource"],
 
   // Optional: validate dependencies before starting
-  assert: ({ otherResource }) => {
+  assert: ({ otherResource }: { otherResource: TOtherResource }) => {
     if (!isValid(otherResource)) {
       throw new Error("Invalid dependency");
     }
   },
 
   // Required: start the resource
-  start: (deps) => {
+  start: (deps: { otherResource: TOtherResource }) => {
     // Return your resource instance
     return createMyResource(deps);
   },
@@ -323,9 +323,79 @@ const server1 = await startSystem(serverConfig);
 const server2 = await startSystem(serverConfig);
 ```
 
+### System Topology Visualization 🎉
+
+Visualize and understand your system's dependency structure! Every call to `startSystem` now includes a `topology` object:
+
+```typescript
+const { system, errors, topology } = await startSystem(config);
+
+// Print human-readable topology
+console.log(formatTopology(topology));
+// 🧶 System Topology (5 resources, max depth: 3)
+//
+// Layer 0:
+//   • config (no dependencies) → [database, cache]
+//
+// Layer 1:
+//   • database ← [config] → [api]
+//   • cache ← [config] → [api]
+// ...
+
+// Generate Mermaid diagram for markdown
+console.log(toMermaid(topology));
+// graph TD
+//   config --> database
+//   config --> cache
+//   database --> api
+//   cache --> api
+//   api --> httpServer
+
+// Export as JSON for custom visualizations
+const json = toJSON(topology);
+fs.writeFileSync('topology.json', JSON.stringify(json, null, 2));
+
+// Generate GraphViz DOT format
+const dot = toDot(topology);
+fs.writeFileSync('system.dot', dot);
+// Render with: dot -Tpng system.dot -o system.png
+```
+
+**Topology Structure:**
+
+```typescript
+{
+  layers: [
+    {
+      depth: 0,
+      resources: [
+        { id: 'config', dependencies: [], dependents: ['database', 'cache'] }
+      ]
+    },
+    // ... more layers
+  ],
+  graph: { config: [], database: ['config'], ... },
+  dependents: { config: ['database', 'cache'], ... },
+  depths: { config: 0, database: 1, ... },
+  totalResources: 5,
+  maxDepth: 3,
+  startupOrder: ['config', 'database', 'cache', 'api', 'httpServer'],
+  shutdownOrder: ['httpServer', 'api', 'cache', 'database', 'config']
+}
+```
+
+**Use Cases:**
+- 🐛 Debug complex dependency chains
+- 📖 Auto-generate architecture documentation
+- 🎨 Create visual system diagrams
+- 🧪 Validate system structure in tests
+- 📊 Analyze system complexity
+
+See `examples/topology-visualization.ts` for a complete example!
+
 ## API Reference
 
-### `defineResource<TDeps, TResource>(config)`
+### `defineResource(config)`
 
 Helper to define a resource with full type inference.
 
@@ -336,7 +406,7 @@ Helper to define a resource with full type inference.
 - `config.start: (deps) => T | Promise<T>` - Start the resource
 - `config.halt: (instance) => void | Promise<void>` - Stop the resource
 
-**Returns:** `ResourceConfig<TDeps, T>`
+**Returns:** `ResourceConfig<TStart>`
 
 ### `startSystem<TConfig>(config)`
 
@@ -404,7 +474,6 @@ Issues and PRs welcome! This library has been battle-tested in at least one real
 ---
 
 **Untangle your code. Compose your systems. Ship with confidence. Braid them intentionally and elegantly.** 🧶
-
 
 ## React Adapter
 

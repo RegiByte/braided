@@ -5,7 +5,68 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.1.0] - TBD
+## [0.2.0] - TBD
+
+### Added
+
+**System Topology Visualization** 🎉
+
+A powerful new feature for visualizing and understanding your system's dependency structure!
+
+- **`topology` field in `SystemStartResult`** - Automatically included when starting a system
+- **`buildTopology()`** - Build topology from resources (also used internally)
+- **`formatTopology()`** - Human-readable console output
+- **`toMermaid()`** - Generate Mermaid diagrams for markdown
+- **`toDot()`** - Generate GraphViz DOT format for rendering
+- **`toJSON()`** - Export as JSON for custom visualizations
+
+**Features:**
+- 📊 Dependency layers organized by depth (0 = no dependencies)
+- 🔍 Forward and reverse adjacency lists (dependencies & dependents)
+- 📈 Startup and shutdown order
+- 🎯 Zero runtime overhead (computed once during startup)
+- 🧪 13 comprehensive tests
+
+**Example:**
+
+```typescript
+const { system, errors, topology } = await startSystem(config);
+
+console.log(formatTopology(topology));
+// 🧶 System Topology (5 resources, max depth: 3)
+//
+// Layer 0:
+//   • config (no dependencies) → [database, cache]
+//
+// Layer 1:
+//   • database ← [config] → [api]
+//   • cache ← [config] → [api]
+// ...
+
+// Generate Mermaid diagram
+console.log(toMermaid(topology));
+// graph TD
+//   config --> database
+//   config --> cache
+//   ...
+
+// Export as JSON
+const json = toJSON(topology);
+fs.writeFileSync('topology.json', JSON.stringify(json, null, 2));
+```
+
+**Use Cases:**
+- 🐛 Debug complex dependency chains
+- 📖 Auto-generate architecture documentation
+- 🎨 Create visual system diagrams
+- 🧪 Validate system structure in tests
+- 📊 Analyze system complexity
+
+See `examples/topology-visualization.ts` for a complete example!
+
+---
+
+## [0.1.0] - 2024-12-14
 
 ### Changed
 
