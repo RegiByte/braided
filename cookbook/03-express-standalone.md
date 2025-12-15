@@ -319,15 +319,15 @@ Press `Ctrl+C` in the server terminal:
 
 ## 🔍 **What's Happening**
 
-### **1. Two Resources, Not One**
+### **1. Three Resources, Not One**
 
-We split the Express app into **two resources**:
+We split the Express app into **three resources**:
 
 ```typescript
 expressApp: expressAppResource, // Creates the Express app
 httpServer: httpServerResource, // Starts the HTTP server
 port: defineResource({
-  start: () => 3000, // just gives the port to dependants, static
+  start: () => 3000, // static http port resource
   halt: () => {},
 }),
 ```
