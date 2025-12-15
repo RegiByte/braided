@@ -213,8 +213,8 @@ export const configResource = defineResource({
 
 Every Braided resource has:
 
-- **`start(deps)`** - Called when the system starts, returns the resource value
-- **`halt(instance)`** - Called when the system stops, receives the value from start
+- **`start(deps)`** - Called when the system starts, returns the started resource instance
+- **`halt(instance)`** - Called when the system stops, receives the started resource instance
 
 ### **2. System Composition**
 
