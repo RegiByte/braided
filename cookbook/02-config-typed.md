@@ -151,12 +151,18 @@ console.log("🚀 System started!");
 console.log("Config:", system.config);
 
 // Graceful shutdown
-const shutdown = async () => {
-  console.log("📴 Shutting down...");
-  await haltSystem(systemConfig, system);
-  console.log("✅ Shutdown complete");
-  process.exit(0);
+const makeShutdown = () => {
+  let isShuttingDown = false;
+  return async () => {
+    if (isShuttingDown) return;
+    isShuttingDown = true;
+    console.log("\n📴 Shutting down gracefully...");
+    await haltSystem(systemConfig, system);
+    console.log("✅ Shutdown complete");
+    process.exit(0);
+  };
 };
+const shutdown = makeShutdown();
 
 process.on("SIGTERM", shutdown);
 process.on("SIGINT", shutdown);
