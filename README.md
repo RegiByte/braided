@@ -1,48 +1,38 @@
-# 🧶 Braided
+# Braided
 
-> **Untangle your stateful resources.**
+A minimal, type-safe library for managing stateful resources in JavaScript and TypeScript applications through declarative system composition with automatic dependency resolution and lifecycle management.
 
-A minimal, type-safe library for declarative system composition with dependency-aware lifecycle management. It serves the purpose of managing stateful resources in JS/TS apps. Inspired by Clojure's [Integrant](https://github.com/weavejester/integrant).
+Inspired by Clojure's [Integrant](https://github.com/weavejester/integrant).
 
 ## The Problem
 
-Modern JavaScript applications are inevitably **complected** (braided together in ways where you can't tell which knot is which—a term from Rich Hickey's ["Simple Made Easy"](https://www.infoq.com/presentations/Simple-Made-Easy/) talk).
+Building applications with multiple stateful resources creates coordination challenges:
 
-When building systems, we need to connect multiple stateful resources:
+- Database connections must start before the API server
+- Configuration must load before anything that depends on it
+- HTTP servers need graceful shutdown to finish in-flight requests
+- Cache connections should close after services that use them
+- Manual ordering is error-prone and doesn't scale
 
-- Environment variables loaded from external sources
-- A database connection pool
-- A logger instance with multiple transports
-- A WebSocket server managing multiple clients
-- A queue worker processing messages
-- An http server handling requests (with the db and everything else)
+Traditional approaches lead to common issues:
 
-A lot of coordination need to be done right in order to get maintainable systems that survive the test of time. It's not just about starting and stopping resources, it's about ensuring that the dependencies are resolved in the correct order, and that the resources are stopped gracefully and given the chance to flush ongoing work or stop what they're doing in the correct order. Think database transactions, in-flight requests, queue workers running jobs and other sensitive processes that need to stop gracefully.
+- Implicit dependencies through module imports
+- Manual startup/shutdown ordering that breaks as systems grow
+- Global singletons that make testing difficult
+- Circular dependency errors discovered at runtime
+- No clear system topology or dependency visualization
 
-This contrasts with the current state of JS development where state is handled recklessly and implicitly, and dependencies are discovered and loaded based on brittle module load order or other weird heuristics.
+## The Solution
 
-In the modern JavaScript development landscape, frameworks that should be libraries want to **take over your application architecture**, and they become these giant god objects which control your entire running system. You can't test just a slice of the system because it depends on other parts that are not under your control or are impractical to mock/simulate. You end up with:
+Braided provides a data-driven approach to system composition:
 
-- 🔴 Huge monster codebases full of distributed singletons, states and implicit dependency chains
-- 🔴 Testing that requires mocking giant chains of modules
-- 🔴 Impossible to test a single part in isolation
-- 🔴 Inadvertent spawning of entire dependency chains
-- 🔴 Importing a file may cause a stateful thing to start or be created
-
----
-
-Braided does not offer a solution to these problems, it empowers you with a tool to help YOU solve them in a way that suites your needs and coding style without forcing you to change your entire development process, as long as you can fit it in your system, you can use it as much or as little as you want.
-
-**Braided** provides a data-driven approach to system composition:
-
-✅ **Declare your system topology as data**  
-✅ **Define handlers to start and stop resources**  
-✅ **Deterministic, coordinated startup/shutdown sequences**  
-✅ **Environment agnostic** (no Node.js or browser APIs)  
-✅ **Ridiculously easy to mock and test**  
-✅ **Centralized control** of your entire system  
-✅ **Strong composition** of stateful resources  
-✅ **Minimal API surface** no opinions whatsoever, it doesn't even log anything, just gives you data.
+- Declare your system topology as plain data structures
+- Define start and stop handlers for each resource
+- Automatic dependency resolution via topological sorting
+- Type-safe dependencies with full TypeScript inference
+- Graceful startup and shutdown in correct order
+- Easy testing by swapping resource implementations
+- Environment agnostic (works in Node.js, browsers, edge runtimes)
 
 ## Installation
 
@@ -247,9 +237,9 @@ process.on("SIGTERM", async () => {
 });
 ```
 
-## Testing Made Easy
+## Testing
 
-Because resources are just data and functions, testing is trivial:
+Resources are plain functions, making testing straightforward:
 
 ```typescript
 import { describe, test, expect } from "vitest";
@@ -325,21 +315,21 @@ const server2 = await startSystem(serverConfig);
 
 ### System Topology Visualization
 
-Visualize and understand your system's dependency structure! Every call to `startSystem` includes a `topology` object:
+Every call to `startSystem` returns a `topology` object containing the complete dependency structure:
 
 ```typescript
 const { system, errors, topology } = await startSystem(config);
 
 // Print human-readable topology
 console.log(formatTopology(topology));
-// 🧶 System Topology (5 resources, max depth: 3)
+// System Topology (5 resources, max depth: 3)
 //
 // Layer 0:
-//   • config (no dependencies) → [database, cache]
+//   config (no dependencies) → [database, cache]
 //
 // Layer 1:
-//   • database ← [config] → [api]
-//   • cache ← [config] → [api]
+//   database ← [config] → [api]
+//   cache ← [config] → [api]
 // ...
 
 // Generate Mermaid diagram for markdown
@@ -353,11 +343,11 @@ console.log(toMermaid(topology));
 
 // Export as JSON for custom visualizations
 const json = toJSON(topology);
-fs.writeFileSync('topology.json', JSON.stringify(json, null, 2));
+fs.writeFileSync("topology.json", JSON.stringify(json, null, 2));
 
 // Generate GraphViz DOT format
 const dot = toDot(topology);
-fs.writeFileSync('system.dot', dot);
+fs.writeFileSync("system.dot", dot);
 // Render with: dot -Tpng system.dot -o system.png
 ```
 
@@ -385,11 +375,12 @@ fs.writeFileSync('system.dot', dot);
 ```
 
 **Use Cases:**
-- 🐛 Debug complex dependency chains
-- 📖 Auto-generate architecture documentation
-- 🎨 Create visual system diagrams
-- 🧪 Validate system structure in tests
-- 📊 Analyze system complexity
+
+- Debug complex dependency chains
+- Auto-generate architecture documentation
+- Create visual system diagrams
+- Validate system structure in tests
+- Analyze system complexity
 
 ## API Reference
 
@@ -427,54 +418,49 @@ Halt all resources in reverse dependency order.
 
 **Returns:** `Promise<{ errors: Map<string, Error> }>`
 
-## Philosophy
+## Design Principles
 
-**Braided** embraces these principles:
+1. **Data over code** - Systems are declared as data structures
+2. **Explicit over implicit** - Dependencies are declared, not discovered
+3. **Simple over easy** - Minimal API that composes well
+4. **Testable by default** - No global state, resources are swappable
+5. **Environment agnostic** - Works in Node.js, browsers, and edge runtimes
+6. **Type-safe** - Full TypeScript support with type inference
+7. **Zero magic** - No decorators, reflection, or directory scanning
+8. **Unopinionated** - Use as much or as little as needed
 
-1. **Data over code** - Systems are declared as data structures, mix and match as much as you want
-2. **Explicit over implicit** - Dependencies are declared, not discovered, you need to guide the dependencies to where they need to be
-3. **Simple over easy** - Minimal API that composes well with other libraries
-4. **Testable by default** - No global state, easy to mock
-5. **Environment agnostic** - Works everywhere JavaScript runs
-6. **Type-safe** - Full TypeScript support with inference
-7. **Zero magic** - No decorators, no reflection, no "scanning" directories. Just data structures.
-8. **Unopinionated** - You don't have to marry your system to this library or change your coding style to fit it.
+## Frequently Asked Questions
+
+**How does the library determine startup and shutdown order?**
+
+The library uses topological sorting to analyze the dependency graph. Resources start in dependency order (dependencies first) and stop in reverse order (dependents first).
+
+**What happens if a resource fails to start?**
+
+The system continues starting other resources. Dependent resources receive `undefined` for failed dependencies. Errors are collected in the returned `errors` map. Use the `assert` function to validate dependencies and fail fast if needed.
+
+**What happens if a resource fails to stop?**
+
+The system continues halting other resources. Errors are collected and returned in the `errors` map from `haltSystem`.
+
+**Does it detect circular dependencies?**
+
+Yes. Circular dependencies are detected during topological sorting and throw an error immediately, preventing the system from starting.
 
 ## Inspiration
 
-This library is inspired by:
-
-- [Integrant](https://github.com/weavejester/integrant) (Clojure)
-- Rich Hickey's ["Simple Made Easy"](https://www.infoq.com/presentations/Simple-Made-Easy/)
-- The need for better composition in JavaScript applications and my own real world experience with software development in enterprise environments
-
-# Behavior Summary
-
-This describes the behavior of the library in a nutshell and tries to answer common questions and concerns.
-
-- **How does the library knows in which order to start and stop the resources?**
-  - The library uses a topological sort algorithm to determine the correct order by starting the resources in dependency order and stopping them in reverse dependency order.
-- **What happens if a resource fails to start?**
-  - The system will continue starting other resources. Dependent resources receive `undefined` for failed dependencies. If it's unacceptable for your system to have undefined dependencies, you can assert on the dependencies before starting the resource, collect the errors at the end and handle them as you see fit.
-- **What happens if a resource fails to stop?**
-  - The system will continue halting other resources. The errors are collected and returned.
-- **Does it detect circular dependencies?**
-  - Yes, it will throw an error if it detects a circular dependency and you will see immediately what's wrong.
+- [Integrant](https://github.com/weavejester/integrant) - Clojure library for data-driven system composition
+- [Component](https://github.com/stuartsierra/component) - Clojure library for managing lifecycle and dependencies
+- Rich Hickey's ["Simple Made Easy"](https://www.infoq.com/presentations/Simple-Made-Easy/) talk
 
 ## License
 
 ISC
 
+## Related Projects
+
+**[Braided React](https://github.com/RegiByte/braided-react)** - React adapter for managing Braided systems independent of the React component lifecycle.
+
 ## Contributing
 
-Issues and PRs welcome! This library has been battle-tested in at least one real-world distributed system managing WebRTC, WebSockets, timers, client stores, dev-tool observers, and other stateful resources. But it's still very young and likely to change.
-
----
-
-**Untangle your code. Compose your systems. Ship with confidence. Braid them intentionally and elegantly.** 🧶
-
-## React Adapter
-
-There is a React adapter for Braided that you can use to manage systems independent of the React lifecycle.
-
-See [Braided React](https://github.com/RegiByte/braided-react) for more details.
+Issues and pull requests are welcome. This library has been used in production systems managing WebRTC connections, WebSocket servers, database pools, caches, and background workers.
