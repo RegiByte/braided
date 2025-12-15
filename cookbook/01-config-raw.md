@@ -20,9 +20,7 @@
 
 ---
 
-## 🧑‍🍳 **The Recipe**
-
-### **What We're Building**
+## **What We're Building**
 
 A config resource that:
 
@@ -55,7 +53,7 @@ export type Config = {
   LOG_LEVEL: string;
 };
 
-export const configResource = defineResource<Config>({
+export const configResource = defineResource({
   async start() {
     console.log("📝 Loading configuration...");
 
