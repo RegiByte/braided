@@ -139,11 +139,11 @@ setInterval(() => {
 
 ```json
 {
-  "name": "recipe-01-config-raw",
+  "name": "cookbook-01-config-raw",
   "version": "1.0.0",
   "type": "module",
   "scripts": {
-    "start": "node system.js"
+    "start": "tsx system.ts"
   },
   "dependencies": {
     "braided": "^0.2.0",
@@ -151,9 +151,11 @@ setInterval(() => {
   },
   "devDependencies": {
     "@types/node": "^20.10.0",
+    "tsx": "^4.21.0",
     "typescript": "^5.3.0"
   }
 }
+
 ```
 
 ---
