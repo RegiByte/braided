@@ -1,0 +1,23 @@
+{
+  "name": "cookbook-04-database-prisma",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "Recipe 4: Database resource with Prisma and lifecycle management",
+  "scripts": {
+    "start": "tsx system.ts",
+    "dev": "tsx --watch system.ts",
+    "db:generate": "prisma generate",
+    "db:push": "prisma db push",
+    "db:studio": "prisma studio"
+  },
+  "dependencies": {
+    "@prisma/client": "^6.1.0",
+    "braided": "^0.2.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.19.27",
+    "prisma": "^6.1.0",
+    "tsx": "^4.21.0",
+    "typescript": "^5.3.0"
+  }
+}
