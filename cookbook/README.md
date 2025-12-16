@@ -1,77 +1,56 @@
 # Braided Cookbook
 
-**Progressive recipes for building production systems with Braided.**
+Progressive recipes for building production systems with Braided.
 
-Each recipe is self-contained and copy-pastable. Start from the beginning and work your way through - each recipe builds on concepts from previous ones.
+Each recipe is self-contained and runnable. Start from the beginning and work through sequentially - each recipe builds on concepts from previous ones.
 
----
+## Recipes
 
-## 📚 **Recipes**
-
-### **Part 1: Foundation - Single Resources**
+### Part 1: Foundation
 
 Learn the basics by building individual resources.
 
-1. **[Config (Raw)](./01-config-raw.md)** - Load environment variables into a simple config object
-2. **[Config (Typed)](./02-config-typed.md)** - Add Zod validation for type-safe configuration
-3. **[Express (Standalone)](./03-express-standalone.md)** - HTTP server with graceful shutdown
+1. [Config (Raw)](./01-config-raw.md) - Load environment variables into a config object
+2. [Config (Typed)](./02-config-typed.md) - Add Zod validation for type-safe configuration
+3. [Express (Standalone)](./03-express-standalone.md) - HTTP server with graceful shutdown
+4. [Database (Prisma)](./04-database-prisma.md) - Database connection with lifecycle management
+5. [Full-Stack Composition](./05-full-stack.md) - Compose config, database, API, and HTTP server
 
-### **Part 2: Composition - Dependencies** _(Coming Soon)_
+### Part 2: Advanced Patterns
 
-Learn how resources depend on each other.
+Coming soon.
 
-4. **Database (Standalone)** - Prisma client with connection management
-5. **Database + Config** - Database resource that uses config
-6. **Redis (Standalone)** - Redis client with connection lifecycle
-7. **Redis + Config** - Redis resource that uses config
-8. **Express + Database + Config** - Full backend stack
+6. WebSocket Server - Real-time communication with connection management
+7. Queue Worker - Background job processing with Redis
+8. Cache Layer - Redis caching with fallback patterns
+9. Testing Strategies - Mocking resources and integration testing
+10. Production Deployment - Health checks, monitoring, and graceful shutdown
 
-### **Part 3: Complex Systems - Emergence** _(Coming Soon)_
+## How to Use This Cookbook
 
-Learn how complex systems emerge from simple composition.
+**Read sequentially.** Start with Recipe 1 and work through in order. Each recipe assumes knowledge from previous ones.
 
-9. **Queue Worker** - Background job processor with Redis
-10. **Full Stack** - Config + Database + Redis + Express + Queue Worker
+**Run the examples.** Each recipe has a corresponding runnable example in `/examples` that you can clone and execute.
 
----
+**Experiment.** Modify the examples as you run them. Copy it into your projects and modify it to fit your needs.
 
-## 🎯 **How to Use This Cookbook**
+## What You'll Learn
 
-### **1. Read Progressively**
-Start with Recipe 1 and work your way through. Each recipe assumes you understand previous ones.
+- Structuring resources with clear lifecycles
+- Composing resources with explicit dependencies
+- Achieving graceful shutdown in complex systems
+- Testing systems by swapping resource implementations
+- Building production-ready applications with automatic dependency resolution
 
-### **2. Copy-Paste and Experiment**
-All code is production-ready and copy-pastable. Try it in your own projects.
+## Core Concepts
 
-### **3. Check the Examples**
-Each recipe has a corresponding runnable example in `/examples` that you can clone and run.
+These recipes demonstrate key principles:
 
----
-
-## 🧶 **Philosophy**
-
-These recipes demonstrate Braided's core philosophy:
-
-- **Resources live in closure space** - Independent of your framework
-- **Dependencies are explicit** - Clear startup/shutdown order
-- **Composition is simple** - Complex systems emerge from simple rules
-- **Testing is natural** - Resources are orthogonal to your framework
+- Resources are independent of your framework
+- Dependencies are explicit, not discovered through imports
+- Complex systems emerge from simple composition
+- Testing is straightforward when resources are swappable
 
 ---
-
-## 💡 **What You'll Learn**
-
-By the end of these recipes, you'll understand:
-
-- How to structure resources with clear lifecycles
-- How to compose resources with explicit dependencies
-- How to achieve graceful shutdown in complex systems
-- How to test systems without framework coupling
-- How to swap implementations without changing dependents
-
----
-
-**Let's start cooking!** 🧑‍🍳
 
 Begin with [Recipe 1: Config (Raw)](./01-config-raw.md)
-
