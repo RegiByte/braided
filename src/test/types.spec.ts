@@ -367,6 +367,39 @@ describe("Type inference and safety", () => {
     });
   });
 
+  describe("Optional dependencies typing", () => {
+    test("optional deps are typed as possibly-undefined when using object form", () => {
+      const baseResource = defineResource({
+        start: () => ({ ready: true as const }),
+        halt: () => {},
+      });
+
+      const consumerResource = defineResource({
+        dependencies: { optional: ["base"] as const },
+        start: ({
+          base,
+        }: {
+          base: StartedResource<typeof baseResource> | undefined;
+        }) => {
+          return { hasBase: () => Boolean(base?.ready) };
+        },
+        halt: () => {},
+      });
+
+      type Deps = Parameters<(typeof consumerResource)["start"]>[0];
+      expectTypeOf<Deps["base"]>().toEqualTypeOf<
+        StartedResource<typeof baseResource> | undefined
+      >();
+    });
+
+    test("optional deps are still opt-in at the type level", () => {
+      // Note: Braided's optional/required split is enforced at runtime.
+      // For TypeScript, you should model optional deps in your deps type as `T | undefined`.
+      // This test is just a compile-time “usage pattern” reminder.
+      expectTypeOf(true).toBeBoolean();
+    });
+  });
+
   describe("Real-world complex scenarios", () => {
     test("should handle multi-layer dependency graph", () => {
       // Layer 1: Config

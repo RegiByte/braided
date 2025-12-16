@@ -20,16 +20,14 @@ describe("Resource System - Assertions", () => {
       halt: () => {},
     });
 
-    const apiResource = defineResource<{
-      database: StartedResource<typeof dbResource>;
-    }>({
+    const apiResource = defineResource({
       dependencies: ["database"],
-      assert: ({ database }) => {
+      assert: ({ database }: { database: StartedResource<typeof dbResource> }) => {
         if (!database.connected) {
           throw new Error("Database must be connected before starting API");
         }
       },
-      start: ({ database }) => ({
+      start: ({ database }: { database: StartedResource<typeof dbResource> }) => ({
         getUsers: () => database.query("SELECT * FROM users"),
       }),
       halt: () => {},
@@ -54,16 +52,14 @@ describe("Resource System - Assertions", () => {
       halt: () => {},
     });
 
-    const apiResource = defineResource<{
-      database: StartedResource<typeof dbResource>;
-    }>({
+    const apiResource = defineResource({
       dependencies: ["database"],
-      assert: ({ database }) => {
+      assert: ({ database }: { database: StartedResource<typeof dbResource> }) => {
         if (!database.connected) {
           throw new Error("Database must be connected before starting API");
         }
       },
-      start: ({ database }) => ({
+      start: ({ database }: { database: StartedResource<typeof dbResource> }) => ({
         getUsers: () => database.query("SELECT * FROM users"),
       }),
       halt: () => {},
@@ -99,18 +95,20 @@ describe("Resource System - Assertions", () => {
       halt: () => {},
     });
 
-    const serviceResource = defineResource<{
-      config: StartedResource<typeof configResource>;
-    }>({
+    const serviceResource = defineResource({
       dependencies: ["config"],
-      assert: async ({ config }) => {
+      assert: async ({
+        config,
+      }: {
+        config: StartedResource<typeof configResource>;
+      }) => {
         // Simulate async validation (e.g., checking with external service)
         await new Promise((resolve) => setTimeout(resolve, 5));
         if (!config.apiKey || config.apiKey.length < 10) {
           throw new Error("Invalid API key");
         }
       },
-      start: ({ config }) => ({
+      start: ({ config }: { config: StartedResource<typeof configResource> }) => ({
         makeRequest: () => `Request with key: ${config.apiKey}`,
       }),
       halt: () => {},
@@ -137,17 +135,19 @@ describe("Resource System - Assertions", () => {
       halt: () => {},
     });
 
-    const serviceResource = defineResource<{
-      config: StartedResource<typeof configResource>;
-    }>({
+    const serviceResource = defineResource({
       dependencies: ["config"],
-      assert: async ({ config }) => {
+      assert: async ({
+        config,
+      }: {
+        config: StartedResource<typeof configResource>;
+      }) => {
         await new Promise((resolve) => setTimeout(resolve, 5));
         if (!config.apiKey || config.apiKey.length < 10) {
           throw new Error("Invalid API key: must be at least 10 characters");
         }
       },
-      start: ({ config }) => ({
+      start: ({ config }: { config: StartedResource<typeof configResource> }) => ({
         makeRequest: () => `Request with key: ${config.apiKey}`,
       }),
       halt: () => {},
@@ -185,12 +185,15 @@ describe("Resource System - Assertions", () => {
       halt: () => {},
     });
 
-    const apiResource = defineResource<{
-      database: StartedResource<typeof dbResource>;
-      cache: StartedResource<typeof cacheResource>;
-    }>({
+    const apiResource = defineResource({
       dependencies: ["database", "cache"],
-      assert: ({ database, cache }) => {
+      assert: ({
+        database,
+        cache,
+      }: {
+        database: StartedResource<typeof dbResource>;
+        cache: StartedResource<typeof cacheResource>;
+      }) => {
         if (!database.connected) {
           throw new Error("Database must be connected");
         }
@@ -203,7 +206,13 @@ describe("Resource System - Assertions", () => {
           throw new Error("Database version must be at least 14");
         }
       },
-      start: ({ database, cache }) => ({
+      start: ({
+        database,
+        cache,
+      }: {
+        database: StartedResource<typeof dbResource>;
+        cache: StartedResource<typeof cacheResource>;
+      }) => ({
         getUsers: () => `Users from ${database.version} via ${cache.type}`,
       }),
       halt: () => {},
@@ -239,12 +248,15 @@ describe("Resource System - Assertions", () => {
       halt: () => {},
     });
 
-    const apiResource = defineResource<{
-      database: StartedResource<typeof dbResource>;
-      cache: StartedResource<typeof cacheResource>;
-    }>({
+    const apiResource = defineResource({
       dependencies: ["database", "cache"],
-      assert: ({ database, cache }) => {
+      assert: ({
+        database,
+        cache,
+      }: {
+        database: StartedResource<typeof dbResource>;
+        cache: StartedResource<typeof cacheResource>;
+      }) => {
         if (!database.connected) {
           throw new Error("Database must be connected");
         }
@@ -256,7 +268,13 @@ describe("Resource System - Assertions", () => {
           throw new Error("Database version must be at least 14");
         }
       },
-      start: ({ database, cache }) => ({
+      start: ({
+        database,
+        cache,
+      }: {
+        database: StartedResource<typeof dbResource>;
+        cache: StartedResource<typeof cacheResource>;
+      }) => ({
         getUsers: () => `Users from ${database.version} via ${cache.type}`,
       }),
       halt: () => {},
@@ -290,11 +308,13 @@ describe("Resource System - Assertions", () => {
       halt: () => {},
     });
 
-    const apiResource = defineResource<{
-      database: StartedResource<typeof failingDbResource>;
-    }>({
+    const apiResource = defineResource({
       dependencies: ["database"],
-      assert: ({ database }) => {
+      assert: ({
+        database,
+      }: {
+        database?: StartedResource<typeof failingDbResource>;
+      }) => {
         // This assertion should handle undefined gracefully
         if (!database) {
           throw new Error("Database dependency is required");
@@ -303,7 +323,11 @@ describe("Resource System - Assertions", () => {
           throw new Error("Database must be connected");
         }
       },
-      start: ({ database }) => ({
+      start: ({
+        database,
+      }: {
+        database: StartedResource<typeof failingDbResource>;
+      }) => ({
         getUsers: () => database.query("SELECT * FROM users"),
       }),
       halt: () => {},
@@ -322,7 +346,9 @@ describe("Resource System - Assertions", () => {
     expect(errors.has("api")).toBe(true);
     expect(errors.get("database")?.message).toBe("Database connection failed");
     const apiError = errors.get("api");
-    expect(apiError?.message).toBe('Invalid dependencies for resource "api"');
+    expect(apiError?.message).toContain(
+      'Missing required dependencies for resource "api"'
+    );
     expect((apiError as any)?.cause?.message).toContain("Database dependency is required");
 
     await haltSystem(config, system);
@@ -354,11 +380,9 @@ describe("Resource System - Assertions", () => {
       halt: () => {},
     });
 
-    const adminPanelResource = defineResource<{
-      auth: StartedResource<typeof authResource>;
-    }>({
+    const adminPanelResource = defineResource({
       dependencies: ["auth"],
-      assert: ({ auth }) => {
+      assert: ({ auth }: { auth: StartedResource<typeof authResource> }) => {
         if (!auth.isAuthenticated) {
           throw new Error("User must be authenticated");
         }
@@ -401,11 +425,9 @@ describe("Resource System - Assertions", () => {
       halt: () => {},
     });
 
-    const dependentResource = defineResource<{
-      base: StartedResource<typeof baseResource>;
-    }>({
+    const dependentResource = defineResource({
       dependencies: ["base"],
-      assert: ({ base }) => {
+      assert: ({ base }: { base: StartedResource<typeof baseResource> }) => {
         executionOrder.push("dependent-assert");
         if (!base.value) {
           throw new Error("Base must have a value");
@@ -439,11 +461,9 @@ describe("Resource System - Assertions", () => {
       halt: () => {},
     });
 
-    const dependentResource = defineResource<{
-      base: StartedResource<typeof baseResource>;
-    }>({
+    const dependentResource = defineResource({
       dependencies: ["base"],
-      assert: ({ base }) => {
+      assert: ({ base }: { base: StartedResource<typeof baseResource> }) => {
         if (!base.ready) {
           throw new Error("Base is not ready");
         }
@@ -499,12 +519,15 @@ describe("Resource System - Assertions", () => {
       },
     });
 
-    const httpServerResource = defineResource<{
-      database: StartedResource<typeof databaseResource>;
-      cache: StartedResource<typeof cacheResource>;
-    }>({
+    const httpServerResource = defineResource({
       dependencies: ["database", "cache"],
-      assert: async ({ database, cache }) => {
+      assert: async ({
+        database,
+        cache,
+      }: {
+        database: StartedResource<typeof databaseResource>;
+        cache: StartedResource<typeof cacheResource>;
+      }) => {
         // Validate database
         if (!database.connected) {
           throw new Error("Database must be connected before starting server");
@@ -527,7 +550,13 @@ describe("Resource System - Assertions", () => {
           throw new Error("Cache health check failed");
         }
       },
-      start: ({ database, cache }) => {
+      start: ({
+        database,
+        cache,
+      }: {
+        database: StartedResource<typeof databaseResource>;
+        cache: StartedResource<typeof cacheResource>;
+      }) => {
         return {
           listening: true,
           port: 3000,

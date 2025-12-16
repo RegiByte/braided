@@ -25,11 +25,13 @@ const counterResource = defineResource({
 });
 
 // Logger resource that depends on counter
-const loggerResource = defineResource<{
-  counter: StartedResource<typeof counterResource>;
-}>({
+const loggerResource = defineResource({
   dependencies: ["counter"],
-  start: ({ counter }) => {
+  start: ({
+    counter,
+  }: {
+    counter: StartedResource<typeof counterResource>;
+  }) => {
     const logs: Array<string> = [];
     return {
       logs,
@@ -57,11 +59,14 @@ const failingResource = defineResource({
 });
 
 // Resource that depends on a failing resource
-const dependsOnFailingResource = defineResource<{
-  failing: StartedResource<typeof failingResource>;
-}>({
-  dependencies: ["failing"],
-  start: ({ failing }) => {
+const dependsOnFailingResource = defineResource({
+  // Optional dependency: this resource can run in degraded mode
+  dependencies: { optional: ["failing"] },
+  start: ({
+    failing,
+  }: {
+    failing?: StartedResource<typeof failingResource>;
+  }) => {
     if (!failing) {
       return { value: "degraded mode" };
     }
@@ -163,9 +168,13 @@ describe("Resource System - Dependency Ordering", () => {
       halt: () => {},
     });
 
-    const dependent = defineResource<{ base: StartedResource<typeof base> }>({
+    const dependent = defineResource({
       dependencies: ["base"],
-      start: ({ base: baseInstance }) => {
+      start: ({
+        base: baseInstance,
+      }: {
+        base: StartedResource<typeof base>;
+      }) => {
         startOrder.push("dependent");
         return { value: `depends on ${baseInstance.value}` };
       },
@@ -196,9 +205,7 @@ describe("Resource System - Dependency Ordering", () => {
       },
     });
 
-    const dependentResource = defineResource<{
-      base: StartedResource<typeof baseResource>;
-    }>({
+    const dependentResource = defineResource({
       dependencies: ["base"],
       start: () => ({ value: "dependent" }),
       halt: () => {
@@ -225,7 +232,7 @@ describe("Resource System - Dependency Ordering", () => {
       halt: () => {},
     });
 
-    const b = defineResource<{ a: StartedResource<typeof a> }>({
+    const b = defineResource({
       dependencies: ["a"],
       start: () => {
         startOrder.push("b");
@@ -234,7 +241,7 @@ describe("Resource System - Dependency Ordering", () => {
       halt: () => {},
     });
 
-    const c = defineResource<{ a: StartedResource<typeof a> }>({
+    const c = defineResource({
       dependencies: ["a"],
       start: () => {
         startOrder.push("c");
@@ -243,10 +250,7 @@ describe("Resource System - Dependency Ordering", () => {
       halt: () => {},
     });
 
-    const d = defineResource<{
-      b: StartedResource<typeof b>;
-      c: StartedResource<typeof c>;
-    }>({
+    const d = defineResource({
       dependencies: ["b", "c"],
       start: () => {
         startOrder.push("d");
@@ -271,13 +275,13 @@ describe("Resource System - Dependency Ordering", () => {
   });
 
   test("detects circular dependencies", async () => {
-    const a = defineResource<{ b: any }>({
+    const a = defineResource({
       dependencies: ["b"],
       start: () => ({ value: "a" }),
       halt: () => {},
     });
 
-    const b = defineResource<{ a: StartedResource<typeof a> }>({
+    const b = defineResource({
       dependencies: ["a"],
       start: () => ({ value: "b" }),
       halt: () => {},
@@ -321,7 +325,7 @@ describe("Resource System - Dependency Ordering", () => {
       halt: () => {},
     });
 
-    const b = defineResource<{ a: StartedResource<typeof a> }>({
+    const b = defineResource({
       dependencies: ["a"],
       start: () => {
         startOrder.push("b");
@@ -330,7 +334,7 @@ describe("Resource System - Dependency Ordering", () => {
       halt: () => {},
     });
 
-    const c = defineResource<{ a: StartedResource<typeof a> }>({
+    const c = defineResource({
       dependencies: ["a"],
       start: () => {
         startOrder.push("c");
@@ -339,10 +343,7 @@ describe("Resource System - Dependency Ordering", () => {
       halt: () => {},
     });
 
-    const d = defineResource<{
-      b: StartedResource<typeof b>;
-      c: StartedResource<typeof c>;
-    }>({
+    const d = defineResource({
       dependencies: ["b", "c"],
       start: () => {
         startOrder.push("d");
@@ -448,6 +449,333 @@ describe("Resource System - Error Handling", () => {
   });
 });
 
+describe("Resource System - Required vs Optional Dependencies", () => {
+  test("resource with required dependency (array form) blocks when dependency fails", async () => {
+    // Array form means all deps are required by default
+    const requiredDependent = defineResource({
+      dependencies: ["failing"],
+      start: ({ failing }: { failing: any }) => ({
+        value: "should not start",
+      }),
+      halt: () => {},
+    });
+
+    const config = {
+      failing: failingResource,
+      requiredDependent,
+    };
+
+    const { system, errors } = await startSystem(config);
+
+    // Resource should not start because required dependency failed
+    expect(system.requiredDependent).toBeUndefined();
+    expect(errors.size).toBe(2); // Both failing and requiredDependent
+    expect(errors.has("failing")).toBe(true);
+    expect(errors.has("requiredDependent")).toBe(true);
+    expect(errors.get("requiredDependent")?.message).toContain(
+      "Missing required dependencies"
+    );
+    expect(errors.get("requiredDependent")?.message).toContain("failing");
+
+    await haltSystem(config, system);
+  });
+
+  test("resource with required dependency (object form) blocks when dependency fails", async () => {
+    // Explicit object form with required key
+    const requiredDependent = defineResource({
+      dependencies: { required: ["failing"] },
+      start: ({ failing }: { failing: any }) => ({
+        value: "should not start",
+      }),
+      halt: () => {},
+    });
+
+    const config = {
+      failing: failingResource,
+      requiredDependent,
+    };
+
+    const { system, errors } = await startSystem(config);
+
+    // Resource should not start because required dependency failed
+    expect(system.requiredDependent).toBeUndefined();
+    expect(errors.size).toBe(2);
+    expect(errors.has("requiredDependent")).toBe(true);
+    expect(errors.get("requiredDependent")?.message).toContain(
+      "Missing required dependencies"
+    );
+
+    await haltSystem(config, system);
+  });
+
+  test("resource with optional dependency starts when dependency fails", async () => {
+    // This is already tested with dependsOnFailingResource, but let's be explicit
+    const optionalDependent = defineResource({
+      dependencies: { optional: ["failing"] },
+      start: ({ failing }: { failing?: any }) => ({
+        mode: failing ? "normal" : "degraded",
+      }),
+      halt: () => {},
+    });
+
+    const config = {
+      failing: failingResource,
+      optionalDependent,
+    };
+
+    const { system, errors } = await startSystem(config);
+
+    // Resource should start in degraded mode
+    expect(system.optionalDependent).toBeDefined();
+    expect(system.optionalDependent.mode).toBe("degraded");
+
+    // Only failing resource should have an error
+    expect(errors.size).toBe(1);
+    expect(errors.has("failing")).toBe(true);
+    expect(errors.has("optionalDependent")).toBe(false);
+
+    await haltSystem(config, system);
+  });
+
+  test("resource with mixed required and optional dependencies", async () => {
+    const mixedDependent = defineResource({
+      dependencies: {
+        required: ["counter"], // Must be available
+        optional: ["failing"], // Can be undefined
+      },
+      start: ({
+        counter,
+        failing,
+      }: {
+        counter: StartedResource<typeof counterResource>;
+        failing?: any;
+      }) => ({
+        hasCounter: !!counter,
+        hasFailing: !!failing,
+        counterValue: counter.getCount(),
+      }),
+      halt: () => {},
+    });
+
+    const config = {
+      counter: counterResource,
+      failing: failingResource,
+      mixedDependent,
+    };
+
+    const { system, errors } = await startSystem(config);
+
+    // Should start because required dep (counter) is available
+    expect(system.mixedDependent).toBeDefined();
+    expect(system.mixedDependent.hasCounter).toBe(true);
+    expect(system.mixedDependent.hasFailing).toBe(false);
+    expect(system.mixedDependent.counterValue).toBe(0);
+
+    // Only failing resource should error
+    expect(errors.size).toBe(1);
+    expect(errors.has("failing")).toBe(true);
+    expect(errors.has("mixedDependent")).toBe(false);
+
+    await haltSystem(config, system);
+  });
+
+  test("resource with mixed deps blocks when required dependency fails", async () => {
+    const mixedDependent = defineResource({
+      dependencies: {
+        required: ["failing"], // Must be available - but it fails!
+        optional: ["counter"], // Can be undefined
+      },
+      start: ({
+        failing,
+        counter,
+      }: {
+        failing: any;
+        counter?: StartedResource<typeof counterResource>;
+      }) => ({
+        value: "should not start",
+      }),
+      halt: () => {},
+    });
+
+    const config = {
+      counter: counterResource,
+      failing: failingResource,
+      mixedDependent,
+    };
+
+    const { system, errors } = await startSystem(config);
+
+    // Should NOT start because required dep (failing) failed
+    expect(system.mixedDependent).toBeUndefined();
+    expect(system.counter).toBeDefined(); // Counter should still start
+
+    // Both failing and mixedDependent should error
+    expect(errors.size).toBe(2);
+    expect(errors.has("failing")).toBe(true);
+    expect(errors.has("mixedDependent")).toBe(true);
+    expect(errors.get("mixedDependent")?.message).toContain(
+      "Missing required dependencies"
+    );
+
+    await haltSystem(config, system);
+  });
+
+  test("resource with only optional dependencies (no required)", async () => {
+    const allOptional = defineResource({
+      dependencies: { optional: ["failing", "counter"] },
+      start: ({
+        failing,
+        counter,
+      }: {
+        failing?: any;
+        counter?: StartedResource<typeof counterResource>;
+      }) => ({
+        hasFailing: !!failing,
+        hasCounter: !!counter,
+      }),
+      halt: () => {},
+    });
+
+    const config = {
+      counter: counterResource,
+      failing: failingResource,
+      allOptional,
+    };
+
+    const { system, errors } = await startSystem(config);
+
+    // Should start with whatever is available
+    expect(system.allOptional).toBeDefined();
+    expect(system.allOptional.hasFailing).toBe(false);
+    expect(system.allOptional.hasCounter).toBe(true);
+
+    // Only failing resource should error
+    expect(errors.size).toBe(1);
+    expect(errors.has("failing")).toBe(true);
+
+    await haltSystem(config, system);
+  });
+
+  test("resource with empty dependencies object", async () => {
+    const noDeps = defineResource({
+      dependencies: { required: [], optional: [] },
+      start: () => ({ value: "standalone" }),
+      halt: () => {},
+    });
+
+    const config = { noDeps };
+    const { system, errors } = await startSystem(config);
+
+    expect(system.noDeps).toBeDefined();
+    expect(system.noDeps.value).toBe("standalone");
+    expect(errors.size).toBe(0);
+
+    await haltSystem(config, system);
+  });
+
+  test("resource with duplicate in required and optional (required takes precedence)", async () => {
+    // Edge case: same dep in both arrays
+    // According to normalizeDependencies, it deduplicates with required first
+    const duplicateDep = defineResource({
+      dependencies: {
+        required: ["counter"],
+        optional: ["counter"], // Duplicate - should be treated as required
+      },
+      start: ({ counter }: { counter: StartedResource<typeof counterResource> }) => ({
+        count: counter.getCount(),
+      }),
+      halt: () => {},
+    });
+
+    const config = {
+      counter: counterResource,
+      duplicateDep,
+    };
+
+    const { system, errors } = await startSystem(config);
+
+    expect(system.duplicateDep).toBeDefined();
+    expect(system.duplicateDep.count).toBe(0);
+    expect(errors.size).toBe(0);
+
+    await haltSystem(config, system);
+  });
+
+  test("chain of resources with mixed dependency types", async () => {
+    // A -> B (required) -> C (optional)
+    const resourceA = defineResource({
+      start: () => ({ value: "A" }),
+      halt: () => {},
+    });
+
+    const resourceB = defineResource({
+      dependencies: { required: ["a"] },
+      start: ({ a }: { a: { value: string } }) => ({
+        value: `B-depends-on-${a.value}`,
+      }),
+      halt: () => {},
+    });
+
+    const resourceC = defineResource({
+      dependencies: { optional: ["b"] },
+      start: ({ b }: { b?: { value: string } }) => ({
+        value: b ? `C-depends-on-${b.value}` : "C-standalone",
+      }),
+      halt: () => {},
+    });
+
+    const config = { a: resourceA, b: resourceB, c: resourceC };
+    const { system, errors } = await startSystem(config);
+
+    expect(errors.size).toBe(0);
+    expect(system.a.value).toBe("A");
+    expect(system.b.value).toBe("B-depends-on-A");
+    expect(system.c.value).toBe("C-depends-on-B-depends-on-A");
+
+    await haltSystem(config, system);
+  });
+
+  test("chain breaks at required dependency but continues with optional", async () => {
+    // failing -> B (required, should fail) -> C (optional, should succeed)
+    const resourceB = defineResource({
+      dependencies: { required: ["failing"] },
+      start: ({ failing }: { failing: any }) => ({
+        value: "B should not start",
+      }),
+      halt: () => {},
+    });
+
+    const resourceC = defineResource({
+      dependencies: { optional: ["b"] },
+      start: ({ b }: { b?: any }) => ({
+        value: b ? "C with B" : "C without B",
+      }),
+      halt: () => {},
+    });
+
+    const config = {
+      failing: failingResource,
+      b: resourceB,
+      c: resourceC,
+    };
+
+    const { system, errors } = await startSystem(config);
+
+    // failing and B should fail, C should succeed in degraded mode
+    expect(system.failing).toBeUndefined();
+    expect(system.b).toBeUndefined();
+    expect(system.c).toBeDefined();
+    expect(system.c.value).toBe("C without B");
+
+    expect(errors.size).toBe(2);
+    expect(errors.has("failing")).toBe(true);
+    expect(errors.has("b")).toBe(true);
+    expect(errors.has("c")).toBe(false);
+
+    await haltSystem(config, system);
+  });
+});
+
 describe("Resource System - Integration Examples", () => {
   test("counter and logger work together", async () => {
     const config = {
@@ -499,11 +827,13 @@ describe("Resource System - Integration Examples", () => {
       },
     });
 
-    const apiResource = defineResource<{
-      database: StartedResource<typeof dbResource>;
-    }>({
+    const apiResource = defineResource({
       dependencies: ["database"],
-      start: ({ database }) => {
+      start: ({
+        database,
+      }: {
+        database: StartedResource<typeof dbResource>;
+      }) => {
         return {
           getUsers: () => database.query("SELECT * FROM users"),
         };
@@ -544,11 +874,13 @@ describe("Resource System - Integration Examples", () => {
       },
     });
 
-    const messageHandlerResource = defineResource<{
-      wsServer: StartedResource<typeof wsServerResource>;
-    }>({
+    const messageHandlerResource = defineResource({
       dependencies: ["wsServer"],
-      start: ({ wsServer }) => {
+      start: ({
+        wsServer,
+      }: {
+        wsServer: StartedResource<typeof wsServerResource>;
+      }) => {
         return {
           handleMessage: (msg: string) => {
             wsServer.broadcast(`Handled: ${msg}`);
@@ -663,11 +995,9 @@ describe("Resource System - Type Safety", () => {
 
   test("defineResource helper provides type inference", async () => {
     // This test mainly validates TypeScript compilation
-    const typedResource = defineResource<{
-      counter: { getCount: () => number };
-    }>({
+    const typedResource = defineResource({
       dependencies: ["counter"],
-      start: ({ counter }) => {
+      start: ({ counter }: { counter: { getCount: () => number } }) => {
         // TypeScript should know counter has getCount method
         const count = counter.getCount();
         return { doubled: count * 2 };

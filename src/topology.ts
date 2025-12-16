@@ -6,6 +6,7 @@
  */
 
 import type { Resource } from "./resource";
+import { normalizeDependencies } from "./dependencies";
 
 /**
  * A resource node in the topology graph
@@ -92,7 +93,7 @@ export function buildTopology(
   // Build forward graph (resource -> dependencies)
   const graph: Record<string, string[]> = {};
   for (const id of Object.keys(resources)) {
-    graph[id] = [...(resources[id].dependencies || [])] as string[];
+    graph[id] = [...normalizeDependencies(resources[id].dependencies).all];
   }
 
   // Build reverse graph (resource -> dependents)
@@ -119,9 +120,8 @@ export function buildTopology(
   }
 
   // Find maximum depth
-  const maxDepth = Object.keys(depths).length > 0
-    ? Math.max(...Object.values(depths))
-    : 0;
+  const maxDepth =
+    Object.keys(depths).length > 0 ? Math.max(...Object.values(depths)) : 0;
 
   // Group resources by depth into layers
   const layers: TopologyLayer[] = [];
@@ -166,7 +166,7 @@ export function formatTopology(topology: SystemTopology): string {
   const lines: string[] = [];
 
   lines.push(
-    `🧶 System Topology (${topology.totalResources} resources, max depth: ${topology.maxDepth})`
+    `System Topology (${topology.totalResources} resources, max depth: ${topology.maxDepth})`
   );
   lines.push("");
 
@@ -312,4 +312,3 @@ export function toJSON(topology: SystemTopology): Record<string, any> {
     graph: topology.graph,
   };
 }
-

@@ -1,4 +1,5 @@
 import { Resource } from "./resource";
+import { normalizeDependencies } from "./dependencies";
 
 /**
  * Performs topological sort on resources using Kahn's algorithm.
@@ -27,8 +28,8 @@ export function topologicalSort(
   // Build dependency graph
   // If resource A depends on B, then B -> A in the graph
   for (const [id, resource] of Object.entries(resources)) {
-    for (const dep of resource.dependencies || []) {
-      const depId = dep as string;
+    const { all } = normalizeDependencies(resource.dependencies);
+    for (const depId of all) {
       if (!graph[depId]) {
         throw new Error(
           `Resource "${id}" depends on "${depId}" which doesn't exist in the system config`

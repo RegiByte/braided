@@ -15,15 +15,24 @@ import type {
 } from "./resource";
 import { topologicalSort } from "./topological-sort";
 import { buildTopology } from "./topology";
+import { normalizeDependencies } from "./dependencies";
+
+// Internal sentinel used to distinguish "unavailable due to failed/skipped start"
+// from legitimate `undefined` instances.
+const UNAVAILABLE = Symbol.for("braided:unavailable");
 
 /**
  * Starts all resources in a system configuration in dependency order.
  *
  * Resources are started using topological sort based on their declared dependencies.
  * If a resource fails to start, the error is collected in the errors map and the
- * resource is marked as 'failed', but the system continues starting other resources
- * (graceful degradation). Dependent resources will receive `undefined` for failed
- * dependencies.
+ * resource is marked as 'failed', but the system continues starting other resources.
+ *
+ * Dependency behavior:
+ * - Required dependencies (default): if a required dependency is unavailable, the
+ *   resource will be skipped (not started) and an error is recorded.
+ * - Optional dependencies: if an optional dependency is unavailable, the resource
+ *   still starts and receives `undefined` for that dependency (graceful degradation).
  *
  * @param config - System configuration mapping resource IDs to resource configs
  * @returns Promise resolving to object with started system and any errors
@@ -44,7 +53,7 @@ import { buildTopology } from "./topology";
 export async function startSystem<TConfig extends SystemConfig>(
   config: TConfig
 ): Promise<SystemStartResult<TConfig>> {
-  const started: Record<string, any> = {};
+  const startedInternal: Record<string, any> = {};
   const resources: Record<string, Resource> = {};
   const errors = new Map<string, Error>();
 
@@ -70,8 +79,33 @@ export async function startSystem<TConfig extends SystemConfig>(
       resource._status = "starting";
 
       // Resolve dependencies from already-started resources
-      const deps = resolveDependencies(resource, started);
-      const errorDetected = await (async () => {
+      const { deps, missingRequired } = resolveDependencies(
+        resource,
+        startedInternal
+      );
+
+      // If required dependencies are unavailable, do not call start().
+      // Optionally run assert for richer validation messages.
+      if (missingRequired.length > 0) {
+        const assertError = await (async () => {
+          try {
+            await resource.assert?.(deps);
+            return null;
+          } catch (error) {
+            return error as Error;
+          }
+        })();
+
+        const error = new Error(
+          `Missing required dependencies for resource "${id}": ${missingRequired.join(
+            ", "
+          )}`
+        );
+        if (assertError) error.cause = assertError;
+        throw error;
+      }
+
+      const assertError = await (async () => {
         try {
           await resource.assert?.(deps);
           return null;
@@ -79,28 +113,37 @@ export async function startSystem<TConfig extends SystemConfig>(
           return error;
         }
       })();
-      if (errorDetected) {
+      if (assertError) {
         const error = new Error(`Invalid dependencies for resource "${id}"`);
-        error.cause = errorDetected;
+        error.cause = assertError;
         throw error;
       }
+
       const instance = await resource.start(deps);
 
       resource._instance = instance;
       resource._status = "started";
-      started[id] = instance;
+      startedInternal[id] = instance;
     } catch (error) {
       const err = error as Error;
-      resource._status = "failed";
+      resource._status = err.message.startsWith("Missing required dependencies")
+        ? "skipped"
+        : "failed";
       resource._error = err;
       errors.set(id, err);
-      // Graceful degradation: mark as undefined so dependents can handle it
-      started[id] = undefined;
+      // Mark as unavailable; optional dependents receive `undefined`
+      startedInternal[id] = UNAVAILABLE;
     }
   }
 
+  // Public-facing system view: UNAVAILABLE is presented as `undefined`
+  const startedPublic: Record<string, any> = {};
+  for (const [id, value] of Object.entries(startedInternal)) {
+    startedPublic[id] = value === UNAVAILABLE ? undefined : value;
+  }
+
   return {
-    system: started as StartedSystem<TConfig>,
+    system: startedPublic as StartedSystem<TConfig>,
     errors,
     topology,
   };
@@ -147,7 +190,7 @@ export async function haltSystem<TConfig extends SystemConfig>(
   for (const id of order) {
     const resource = resources[id]!;
 
-    if (resource._instance && resource._status === "started") {
+    if (resource._status === "started" && resource._instance !== undefined) {
       try {
         resource._status = "halting";
         await resource.halt(resource._instance);
@@ -174,13 +217,21 @@ export async function haltSystem<TConfig extends SystemConfig>(
  */
 function resolveDependencies(
   resource: Resource,
-  started: Record<string, any>
-): Record<string, any> {
+  startedInternal: Record<string, any>
+): { deps: Record<string, any>; missingRequired: string[] } {
   const deps: Record<string, any> = {};
+  const missingRequired: string[] = [];
 
-  for (const depId of resource.dependencies || []) {
-    deps[depId as string] = started[depId as string];
+  const { required, all } = normalizeDependencies(resource.dependencies);
+  const requiredSet = new Set(required.map(String));
+
+  for (const depId of all) {
+    const internal = startedInternal[depId];
+    deps[depId] = internal === UNAVAILABLE ? undefined : internal;
+    if (requiredSet.has(depId) && internal === UNAVAILABLE) {
+      missingRequired.push(depId);
+    }
   }
 
-  return deps;
+  return { deps, missingRequired };
 }

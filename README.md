@@ -276,11 +276,14 @@ describe("API Tests", () => {
 
 ### Graceful Degradation
 
-If a resource fails to start, the system continues starting other resources. Dependent resources receive `undefined` for failed dependencies:
+Braided supports graceful degradation **when you opt in** by marking dependencies as optional.
+
+- **Required dependencies (default)**: if a required dependency is unavailable, the dependent resource **will not start** and an error is recorded.
+- **Optional dependencies**: if an optional dependency is unavailable, the dependent resource still starts and receives `undefined` for that dependency.
 
 ```typescript
 const resilientApi = defineResource({
-  dependencies: ["cache"],
+  dependencies: { optional: ["cache"] },
   start: ({ cache }) => {
     if (!cache) {
       console.warn("Cache unavailable, running without cache");

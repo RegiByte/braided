@@ -19,18 +19,42 @@ type Expand<T> = T extends (...args: any[]) => any
   : T;
 
 /**
+ * Bivariant callback helper.
+ *
+ * We intentionally make callback parameter types bivariant for ergonomics, so users can write:
+ * `assert: ({ base }: { base: Base }) => { ... }` even if inferred deps is a wider record type.
+ *
+ * This mirrors how many TS libraries type event/callback handlers.
+ */
+type BivariantCallback<TArg, TReturn> = {
+  bivarianceHack(arg: TArg): TReturn;
+}["bivarianceHack"];
+
+/**
  * Infer dependencies from the start function's first parameter
  */
-type InferDeps<TStart> = TStart extends (deps: infer D) => any
-  ? D
-  : Record<string, unknown>;
+type InferDeps<TStart extends (...args: any[]) => any> =
+  Parameters<TStart> extends [infer D, ...any[]] ? D : Record<string, unknown>;
 
 /**
  * Infer resource instance type from start function's return type
  */
-type InferResource<TStart> = TStart extends (deps: any) => infer R
-  ? Awaited<R>
-  : unknown;
+type InferResource<TStart> = Awaited<
+  ReturnType<Extract<TStart, (...args: any[]) => any>>
+>;
+
+/**
+ * Dependency specification for resources.
+ *
+ * - Array form: all dependencies are required (default ergonomic path)
+ * - Object form: split required vs optional dependencies (optional enables graceful degradation)
+ */
+export type DependenciesSpec<TDepId extends PropertyKey = string> =
+  | ReadonlyArray<TDepId>
+  | {
+      required?: ReadonlyArray<TDepId>;
+      optional?: ReadonlyArray<TDepId>;
+    };
 
 /**
  * Defines the configuration for a stateful resource.
@@ -41,17 +65,19 @@ type InferResource<TStart> = TStart extends (deps: any) => infer R
  * @template TStart - The start function type (dependencies and return type inferred from this)
  */
 export type ResourceConfig<
-  TStart extends (deps: any) => any = (deps: Record<string, unknown>) => any
+  TStart extends (...args: any[]) => any = (
+    deps: Record<string, unknown>
+  ) => any
 > = {
-  /** Array of resource IDs this resource depends on */
-  dependencies?: Array<keyof InferDeps<TStart>>;
+  /** Dependencies this resource depends on (required by default; can be split into required/optional) */
+  dependencies?: DependenciesSpec<keyof InferDeps<TStart>>;
 
   /**
    * Assert that the dependencies are valid.
    * @param deps - The dependencies to assert (type inferred from start parameter)
    * @returns void, should throw if the dependencies are invalid
    */
-  assert?: (deps: Expand<InferDeps<TStart>>) => void | Promise<void>;
+  assert?: BivariantCallback<Expand<InferDeps<TStart>>, void | Promise<void>>;
 
   /**
    * Start the resource, receiving resolved dependencies.
@@ -85,6 +111,7 @@ export type ResourceStatus =
   | "starting"
   | "started"
   | "failed"
+  | "skipped"
   | "halting";
 
 /**
@@ -92,7 +119,9 @@ export type ResourceStatus =
  * Internal type used by the resource system orchestrator.
  */
 export type Resource<
-  TStart extends (deps: any) => any = (deps: Record<string, unknown>) => any
+  TStart extends (...args: any[]) => any = (
+    deps: Record<string, unknown>
+  ) => any
 > = ResourceConfig<TStart> & {
   _status: ResourceStatus;
   _instance?: InferResource<TStart>;
@@ -180,8 +209,12 @@ export type SystemHaltResult = {
  * })
  * ```
  */
-export function defineResource<TStart extends (deps: any) => any>(
-  config: ResourceConfig<TStart>
+export function defineResource<
+  TStart extends (...args: any[]) => any
+>(
+  // Force inference of TStart from `start` specifically to avoid TS inferring
+  // an artificial deps shape (e.g. `{}`) when `start` is parameterless.
+  config: { start: TStart } & Omit<ResourceConfig<TStart>, "start">
 ): ResourceConfig<TStart> {
   return config;
 }
