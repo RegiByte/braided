@@ -508,11 +508,12 @@ describe("System Topology", () => {
       const order = topologicalSort(resources);
       const topology = buildTopology(resources, order);
       const mermaid = toMermaid(topology);
-
-      expect(mermaid).toContain("graph TB");
-      expect(mermaid).toContain("config");
-      expect(mermaid).toContain("config --> database");
-      expect(mermaid).toContain("database --> api");
+      const lines = mermaid.split("\n");
+      // config should be second line, without dep
+      expect(lines[0]).toContain("graph TB");
+      expect(lines[1]).toContain("config");
+      expect(lines[2]).toContain("config --> database");
+      expect(lines[3]).toContain("database --> api");
     });
 
     test("should support different directions", () => {
