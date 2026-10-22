@@ -174,6 +174,24 @@ export type SystemHaltResult = {
 };
 
 /**
+ * Result of reconciling a started system with a next configuration.
+ */
+export type SystemReconcileResult<TConfig extends SystemConfig> = {
+  /** The next started system: untouched resources keep their instances */
+  system: StartedSystem<TConfig>;
+  /** Map of resource IDs to errors that occurred while starting */
+  errors: Map<string, Error>;
+  /** Map of resource IDs to errors that occurred while halting */
+  haltErrors: Map<string, Error>;
+  /** Topology of the next configuration */
+  topology: import("./topology").SystemTopology;
+  /** IDs halted, in the order they were halted */
+  halted: string[];
+  /** IDs started, in the order they were started (failed and skipped ones included) */
+  started: string[];
+};
+
+/**
  * Helper function to define a resource with full type inference.
  *
  * Dependencies are inferred from the start function's parameter type.

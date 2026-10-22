@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.0] - 2026-10-22
+
+### Added
+
+- **`reconcileSystem(prevConfig, system, nextConfig)`**: moves a running system to a next configuration without restarting what didn't change. Resources are compared by key and identity. Removed and changed ones are halted with their dependents, in reverse order. Changed and added ones are started with their dependents, which receive the new instances. Everything else keeps its instance. It returns the next system (the previous one is never mutated), the start and halt errors apart, the next topology, and what was halted and started, in order. A cycle or a missing dependency in the next configuration throws before anything is halted.
+
 ## [0.2.0] - TBD
 
 ### Added
