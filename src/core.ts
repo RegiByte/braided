@@ -6,9 +6,11 @@ export type {
   StartedSystem,
   SystemConfig,
   SystemHaltResult,
+  SystemReconcileResult,
   SystemStartResult,
 } from "./resource";
 export { haltSystem, startSystem } from "./system";
+export { reconcileSystem } from "./reconcile";
 export { topologicalSort } from "./topological-sort";
 export {
   buildTopology,

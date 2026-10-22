@@ -19,7 +19,7 @@ import { normalizeDependencies } from "./dependencies";
 
 // Internal sentinel used to distinguish "unavailable due to failed/skipped start"
 // from legitimate `undefined` instances.
-const UNAVAILABLE = Symbol.for("braided:unavailable");
+export const UNAVAILABLE = Symbol.for("braided:unavailable");
 
 /**
  * Starts all resources in a system configuration in dependency order.
@@ -72,6 +72,82 @@ export async function startSystem<TConfig extends SystemConfig>(
   const topology = buildTopology(resources, order);
 
   // Start each resource in order
+  await startInOrder(resources, order, startedInternal, errors);
+
+  return {
+    system: publicView(startedInternal) as StartedSystem<TConfig>,
+    errors,
+    topology,
+  };
+}
+
+/**
+ * Halts all resources in a started system in reverse dependency order.
+ *
+ * Resources are halted in the reverse order they were started, ensuring that
+ * resources are stopped before their dependencies. Errors during halt are collected
+ * in the errors map but don't prevent other resources from halting.
+ *
+ * @param config - Original system configuration
+ * @param started - Started system instance to halt
+ * @returns Promise resolving to object with any halt errors
+ *
+ * @example
+ * ```typescript
+ * const { errors } = await haltSystem(config, system)
+ * // All resources are now halted in reverse order
+ * // Check errors.size to see if any resources failed to halt
+ * ```
+ */
+export async function haltSystem<TConfig extends SystemConfig>(
+  config: TConfig,
+  started: StartedSystem<TConfig>
+): Promise<SystemHaltResult> {
+  const resources: Record<string, Resource> = {};
+  const errors = new Map<string, Error>();
+
+  // Reconstruct resources with their instances
+  for (const [id, resourceConfig] of Object.entries(config)) {
+    resources[id] = {
+      ...resourceConfig,
+      _status: "started",
+      _instance: started[id as keyof TConfig],
+    };
+  }
+
+  // Get reverse dependency order
+  const order = topologicalSort(resources).reverse();
+
+  // Halt each resource in reverse order
+  for (const id of order) {
+    const resource = resources[id]!;
+
+    if (resource._status === "started" && resource._instance !== undefined) {
+      try {
+        resource._status = "halting";
+        await resource.halt(resource._instance);
+        resource._status = "stopped";
+        resource._instance = undefined;
+      } catch (error) {
+        errors.set(id, error as Error);
+      }
+    }
+  }
+
+  return { errors };
+}
+
+/**
+ * Starts the resources named in `order`, in that order, resolving each one's
+ * dependencies from `startedInternal` and recording what it started (or
+ * UNAVAILABLE) back into it. Failures are collected in `errors`.
+ */
+export async function startInOrder(
+  resources: Record<string, Resource>,
+  order: ReadonlyArray<string>,
+  startedInternal: Record<string, any>,
+  errors: Map<string, Error>
+): Promise<void> {
   for (const id of order) {
     const resource = resources[id]!;
 
@@ -135,76 +211,16 @@ export async function startSystem<TConfig extends SystemConfig>(
       startedInternal[id] = UNAVAILABLE;
     }
   }
+}
 
-  // Public-facing system view: UNAVAILABLE is presented as `undefined`
+/** Public-facing system view: UNAVAILABLE is presented as `undefined` */
+export function publicView(startedInternal: Record<string, any>): Record<string, any> {
   const startedPublic: Record<string, any> = {};
   for (const [id, value] of Object.entries(startedInternal)) {
     startedPublic[id] = value === UNAVAILABLE ? undefined : value;
   }
-
-  return {
-    system: startedPublic as StartedSystem<TConfig>,
-    errors,
-    topology,
-  };
+  return startedPublic;
 }
-
-/**
- * Halts all resources in a started system in reverse dependency order.
- *
- * Resources are halted in the reverse order they were started, ensuring that
- * resources are stopped before their dependencies. Errors during halt are collected
- * in the errors map but don't prevent other resources from halting.
- *
- * @param config - Original system configuration
- * @param started - Started system instance to halt
- * @returns Promise resolving to object with any halt errors
- *
- * @example
- * ```typescript
- * const { errors } = await haltSystem(config, system)
- * // All resources are now halted in reverse order
- * // Check errors.size to see if any resources failed to halt
- * ```
- */
-export async function haltSystem<TConfig extends SystemConfig>(
-  config: TConfig,
-  started: StartedSystem<TConfig>
-): Promise<SystemHaltResult> {
-  const resources: Record<string, Resource> = {};
-  const errors = new Map<string, Error>();
-
-  // Reconstruct resources with their instances
-  for (const [id, resourceConfig] of Object.entries(config)) {
-    resources[id] = {
-      ...resourceConfig,
-      _status: "started",
-      _instance: started[id as keyof TConfig],
-    };
-  }
-
-  // Get reverse dependency order
-  const order = topologicalSort(resources).reverse();
-
-  // Halt each resource in reverse order
-  for (const id of order) {
-    const resource = resources[id]!;
-
-    if (resource._status === "started" && resource._instance !== undefined) {
-      try {
-        resource._status = "halting";
-        await resource.halt(resource._instance);
-        resource._status = "stopped";
-        resource._instance = undefined;
-      } catch (error) {
-        errors.set(id, error as Error);
-      }
-    }
-  }
-
-  return { errors };
-}
-
 /**
  * Resolves dependencies for a resource from the started resources map.
  *

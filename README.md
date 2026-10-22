@@ -316,6 +316,37 @@ const server1 = await startSystem(serverConfig);
 const server2 = await startSystem(serverConfig);
 ```
 
+### Reconciling a Running System
+
+A started system is a value: the configuration it was started from and the instances it holds. `reconcileSystem` moves it to a next configuration and restarts only what that requires:
+
+```typescript
+const { system } = await startSystem(config);
+
+// Swap the cache implementation while the system runs
+const next = { ...config, cache: redisCache };
+const result = await reconcileSystem(config, system, next);
+// result.halted:  ["api", "cache"]   (dependents first)
+// result.started: ["cache", "api"]   (dependencies first)
+// result.system.database === system.database (untouched)
+```
+
+Resources are compared by key and by identity:
+
+- **Removed or changed** resources are halted, with every resource that depends on them, directly or not, in reverse dependency order. The previous configuration's `halt` is used.
+- **Changed or added** resources are started, with every resource that depends on them. A dependent is always restarted with the instance it depends on, so nothing keeps a reference to a halted instance.
+- **Everything else** keeps its instance.
+
+The previous `system` is never mutated, and a circular or missing dependency in the next configuration throws before anything is halted.
+
+To restart a resource whose configuration hasn't changed, pass a copy of its entry, which gives it a new identity:
+
+```typescript
+await reconcileSystem(config, system, { ...config, database: { ...config.database } });
+```
+
+A resource that failed or was skipped stays unavailable until it is changed, or until something it depends on restarts.
+
 ### System Topology Visualization
 
 Every call to `startSystem` returns a `topology` object containing the complete dependency structure:
@@ -420,6 +451,18 @@ Halt all resources in reverse dependency order.
 - `system: StartedSystem<TConfig>` - Started system to halt
 
 **Returns:** `Promise<{ errors: Map<string, Error> }>`
+
+### `reconcileSystem<TPrev, TNext>(prevConfig, system, nextConfig)`
+
+Move a started system to a next configuration, halting and starting only what changed and what depends on it.
+
+**Parameters:**
+
+- `prevConfig: SystemConfig` - The configuration `system` was started from
+- `system: StartedSystem<TPrev>` - The started system to move from
+- `nextConfig: SystemConfig` - The configuration to move to
+
+**Returns:** `Promise<{ system: StartedSystem<TNext>, errors: Map<string, Error>, haltErrors: Map<string, Error>, topology: SystemTopology, halted: string[], started: string[] }>`
 
 ## Design Principles
 
