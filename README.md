@@ -368,12 +368,17 @@ console.log(formatTopology(topology));
 
 // Generate Mermaid diagram for markdown
 console.log(toMermaid(topology));
-// graph TD
-//   config --> database
-//   config --> cache
-//   database --> api
-//   cache --> api
-//   api --> httpServer
+// graph TB
+//   n0["config"]
+//   n1["database"]
+//   n2["cache"]
+//   n3["api"]
+//   n4["httpServer"]
+//   n0 --> n1
+//   n0 --> n2
+//   n1 --> n3
+//   n2 --> n3
+//   n3 --> n4
 
 // Export as JSON for custom visualizations
 const json = toJSON(topology);

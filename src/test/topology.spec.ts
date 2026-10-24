@@ -507,13 +507,14 @@ describe("System Topology", () => {
 
       const order = topologicalSort(resources);
       const topology = buildTopology(resources, order);
-      const mermaid = toMermaid(topology);
-      const lines = mermaid.split("\n");
-      // config should be second line, without dep
-      expect(lines[0]).toContain("graph TB");
-      expect(lines[1]).toContain("config");
-      expect(lines[2]).toContain("config --> database");
-      expect(lines[3]).toContain("database --> api");
+      expect(toMermaid(topology).split("\n")).toEqual([
+        "graph TB",
+        '  n0["config"]',
+        '  n1["database"]',
+        '  n2["api"]',
+        "  n0 --> n1",
+        "  n1 --> n2",
+      ]);
     });
 
     test("should support different directions", () => {
@@ -629,9 +630,9 @@ describe("System Topology", () => {
       expect(dot).toContain("digraph SystemTopology");
       expect(dot).toContain("rankdir=TB");
       expect(dot).toContain("node [shape=box, style=rounded]");
-      expect(dot).toContain("{ rank=same; config }");
-      expect(dot).toContain("{ rank=same; database }");
-      expect(dot).toContain("config -> database");
+      expect(dot).toContain('{ rank=same; "config" }');
+      expect(dot).toContain('{ rank=same; "database" }');
+      expect(dot).toContain('"config" -> "database";');
     });
 
     test("should support different directions", () => {
@@ -717,8 +718,8 @@ describe("System Topology", () => {
       expect(dot).toContain("digraph SystemTopology");
       expect(dot).toContain("rankdir=TB");
       expect(dot).toContain("node [shape=box, style=rounded]");
-      expect(dot).toContain("{ rank=same; config }");
-      expect(dot).toContain("{ rank=same; cache; database }");
+      expect(dot).toContain('{ rank=same; "config" }');
+      expect(dot).toContain('{ rank=same; "cache"; "database" }');
     });
   });
 
@@ -759,6 +760,60 @@ describe("System Topology", () => {
       expect(jsonString).toBeTruthy();
       const parsed = JSON.parse(jsonString);
       expect(parsed.totalResources).toBe(2);
+    });
+  });
+
+  describe("ids that Mermaid and DOT read as syntax", () => {
+    const resources = (): Record<string, Resource> => ({
+      "core:config": { start: () => ({}), halt: () => {}, _status: "stopped" },
+      "x/cap": {
+        dependencies: ["core:config"],
+        start: () => ({}),
+        halt: () => {},
+        _status: "stopped",
+      },
+      'say "hi" #1': {
+        dependencies: ["x/cap"],
+        start: () => ({}),
+        halt: () => {},
+        _status: "stopped",
+      },
+      "my cache\\x": {
+        dependencies: ["core:config"],
+        start: () => ({}),
+        halt: () => {},
+        _status: "stopped",
+      },
+    });
+    const topology = () =>
+      buildTopology(resources(), topologicalSort(resources()));
+
+    test("toMermaid draws each id as the label of a numbered node", () => {
+      expect(topologicalSort(resources())).toEqual([
+        "core:config",
+        "x/cap",
+        "my cache\\x",
+        'say "hi" #1',
+      ]);
+      expect(toMermaid(topology(), "LR").split("\n")).toEqual([
+        "graph LR",
+        '  n0["core:config"]',
+        '  n1["x/cap"]',
+        '  n2["my cache\\x"]',
+        '  n3["say #quot;hi#quot; #35;1"]',
+        "  n0 --> n1",
+        "  n1 --> n3",
+        "  n0 --> n2",
+      ]);
+    });
+
+    test("toDot quotes each id", () => {
+      const dot = toDot(topology());
+      expect(dot).toContain('{ rank=same; "core:config" }');
+      expect(dot).toContain('{ rank=same; "x/cap"; "my cache\\\\x" }');
+      expect(dot).toContain('"core:config" -> "x/cap";');
+      expect(dot).toContain('"x/cap" -> "say \\"hi\\" #1";');
+      expect(dot).toContain('"core:config" -> "my cache\\\\x";');
     });
   });
 

@@ -195,6 +195,10 @@ export function formatTopology(topology: SystemTopology): string {
 /**
  * Converts topology to Mermaid diagram format.
  *
+ * Each resource is a node `n<i>`, numbered in startup order, labelled with its
+ * id, so any id draws: Mermaid reads spaces, `@` and words such as `end` or
+ * `style` in a bare node id as syntax.
+ *
  * @param topology - System topology to convert
  * @param direction - Graph direction ('TB' = top-bottom, 'LR' = left-right)
  * @returns Mermaid diagram as string
@@ -205,8 +209,10 @@ export function formatTopology(topology: SystemTopology): string {
  * console.log(toMermaid(topology));
  * // Copy output to markdown file:
  * // ```mermaid
- * // graph TD
- * //   config --> database
+ * // graph TB
+ * //   n0["config"]
+ * //   n1["database"]
+ * //   n0 --> n1
  * //   ...
  * // ```
  * ```
@@ -215,28 +221,27 @@ export function toMermaid(
   topology: SystemTopology,
   direction: "TB" | "LR" = "TB"
 ): string {
-  const lines: string[] = [];
-  lines.push(`graph ${direction}`);
+  const nodeIds = new Map(
+    topology.startupOrder.map((id, index) => [id, `n${index}`])
+  );
+  const lines: string[] = [`graph ${direction}`];
 
-  // Add nodes without dependencies first
-  const nodesWithoutDeps = Object.entries(topology.graph)
-    .filter(([_, deps]) => deps.length === 0)
-    .map(([id]) => id);
-
-  if (nodesWithoutDeps.length > 0) {
-    for (const id of nodesWithoutDeps) {
-      lines.push(`  ${id}`);
-    }
+  for (const [id, nodeId] of nodeIds) {
+    lines.push(`  ${nodeId}["${mermaidLabel(id)}"]`);
   }
 
-  // Add edges
   for (const [resource, deps] of Object.entries(topology.graph)) {
     for (const dep of deps) {
-      lines.push(`  ${dep} --> ${resource}`);
+      lines.push(`  ${nodeIds.get(dep)} --> ${nodeIds.get(resource)}`);
     }
   }
 
   return lines.join("\n");
+}
+
+/** A Mermaid quoted label: `#` and `"` written as the entity codes Mermaid decodes. */
+function mermaidLabel(id: string): string {
+  return id.replaceAll("#", "#35;").replaceAll('"', "#quot;");
 }
 
 /**
@@ -265,7 +270,7 @@ export function toDot(
 
   // Group nodes by rank (depth)
   for (const layer of topology.layers) {
-    const nodeIds = layer.resources.map((r) => r.id).join("; ");
+    const nodeIds = layer.resources.map((r) => dotId(r.id)).join("; ");
     lines.push(`  { rank=same; ${nodeIds} }`);
   }
 
@@ -274,12 +279,17 @@ export function toDot(
   // Add edges
   for (const [resource, deps] of Object.entries(topology.graph)) {
     for (const dep of deps) {
-      lines.push(`  ${dep} -> ${resource};`);
+      lines.push(`  ${dotId(dep)} -> ${dotId(resource)};`);
     }
   }
 
   lines.push("}");
   return lines.join("\n");
+}
+
+/** A DOT quoted id: a bare `core:config` is node `core`, port `config`. */
+function dotId(id: string): string {
+  return `"${id.replaceAll("\\", "\\\\").replaceAll('"', '\\"')}"`;
 }
 
 /**
