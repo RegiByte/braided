@@ -279,7 +279,7 @@ describe("API Tests", () => {
 Braided supports graceful degradation **when you opt in** by marking dependencies as optional.
 
 - **Required dependencies (default)**: if a required dependency is unavailable, the dependent resource **will not start** and an error is recorded.
-- **Optional dependencies**: if an optional dependency is unavailable, the dependent resource still starts and receives `undefined` for that dependency.
+- **Optional dependencies**: if an optional dependency is unavailable, the dependent resource still starts and receives `undefined` for that dependency. An optional dependency may also be absent from the config altogether: it draws no edge, and `reconcileSystem` restarts its dependents when it is added or removed. A missing required dependency throws.
 
 ```typescript
 const resilientApi = defineResource({

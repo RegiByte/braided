@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.1] - 2026-10-24
+
+### Fixed
+
+- **An optional dependency missing from the configuration is skipped.** `startSystem`, `haltSystem` and `reconcileSystem` threw `depends on "X" which doesn't exist in the system config` for it, as for a required one. It is now no edge: the dependent starts and receives `undefined` for it, the topology (and its Mermaid and DOT output) draws nothing to it, and a missing required dependency still throws.
+- **`reconcileSystem` halts a resource before restarting it on an added dependency.** Adding a resource that an unchanged one optionally depends on restarted the dependent without halting its previous instance.
+
 ## [0.3.0] - 2026-10-22
 
 ### Added

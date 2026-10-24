@@ -120,6 +120,43 @@ describe("reconcileSystem - adding and removing resources", () => {
     expect(result.system.b).toBe(system.b);
   });
 
+  test("a removed optional dependency restarts its dependent without it", async () => {
+    const t = tracked();
+    const config = {
+      a: t.resource("a"),
+      b: t.resource("b", { required: ["a"], optional: ["c"] }),
+      c: t.resource("c"),
+    };
+    const { system } = await startSystem(config);
+    t.log.length = 0;
+
+    const { c, ...next } = config;
+    const result = await reconcileSystem(config, system, next);
+
+    expect(t.log).toEqual(["halt b", "halt c", "start b"]);
+    expect(result.errors.size).toBe(0);
+    expect(result.system.b.deps).toEqual({ a: system.a, c: undefined });
+    expect(result.topology.graph["b"]).toEqual(["a"]);
+  });
+
+  test("an added optional dependency restarts its dependent on it", async () => {
+    const t = tracked();
+    const full = {
+      a: t.resource("a"),
+      b: t.resource("b", { required: ["a"], optional: ["c"] }),
+      c: t.resource("c"),
+    };
+    const { c, ...config } = full;
+    const { system } = await startSystem(config);
+    t.log.length = 0;
+
+    const result = await reconcileSystem(config, system, full);
+
+    expect(t.log).toEqual(["halt b", "start c", "start b"]);
+    expect(result.system.b.deps["c"]).toBe(result.system.c);
+    expect(result.system.a).toBe(system.a);
+  });
+
   test("a removed resource is halted with its dependents", async () => {
     const t = chain();
     const { system } = await startSystem(t.config);
