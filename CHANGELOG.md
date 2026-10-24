@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.2] - 2026-10-24
+
+### Fixed
+
+- **`toMermaid` and `toDot` draw any resource id.** Both wrote ids raw, so ids holding characters the formats read as syntax drew wrong or not at all. In Mermaid, a space, an `@`, or an id such as `end`, `graph` or `style` failed to parse, and `x:cap(1)`, `a:::b` or `click` parsed into something else. In DOT, `core:config` became node `core` with port `config`, and `/` or `.` failed to parse. `toMermaid` now declares each resource once as a node `n<i>`, numbered in startup order, labelled with its id (`n0["core:config"]`, `"` and `#` written as `#quot;` and `#35;`), and draws edges between those nodes. `toDot` quotes every id (`"core:config" -> "x/cap";`). The output of both changes for every system, plain ids included.
+
 ## [0.3.1] - 2026-10-24
 
 ### Fixed
