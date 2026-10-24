@@ -308,6 +308,18 @@ describe("Resource System - Dependency Ordering", () => {
     );
   });
 
+  test("throws for a missing required dependency beside a missing optional one", async () => {
+    const dependent = defineResource({
+      dependencies: { required: ["missing"], optional: ["absent"] },
+      start: () => ({ value: "dependent" }),
+      halt: () => {},
+    });
+
+    await expect(startSystem({ dependent })).rejects.toThrow(
+      'depends on "missing" which doesn\'t exist'
+    );
+  });
+
   test("handles diamond dependency pattern", async () => {
     const startOrder: Array<string> = [];
 
@@ -535,6 +547,29 @@ describe("Resource System - Required vs Optional Dependencies", () => {
     expect(errors.has("optionalDependent")).toBe(false);
 
     await haltSystem(config, system);
+  });
+
+  test("resource with an optional dependency missing from the config starts with undefined for it", async () => {
+    let received: Record<string, unknown> | undefined;
+    const optionalDependent = defineResource({
+      dependencies: { required: ["counter"], optional: ["absent"] },
+      start: (deps: { counter: any; absent?: any }) => {
+        received = deps;
+        return { mode: deps.absent ? "normal" : "degraded" };
+      },
+      halt: () => {},
+    });
+
+    const config = { counter: counterResource, optionalDependent };
+    const { system, errors, topology } = await startSystem(config);
+
+    expect(errors.size).toBe(0);
+    expect(system.optionalDependent.mode).toBe("degraded");
+    expect(received).toEqual({ counter: system.counter, absent: undefined });
+    expect(topology.graph["optionalDependent"]).toEqual(["counter"]);
+
+    const { errors: haltErrors } = await haltSystem(config, system);
+    expect(haltErrors.size).toBe(0);
   });
 
   test("resource with mixed required and optional dependencies", async () => {

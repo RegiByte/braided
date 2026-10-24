@@ -761,4 +761,45 @@ describe("System Topology", () => {
       expect(parsed.totalResources).toBe(2);
     });
   });
+
+  describe("optional dependencies missing from the config", () => {
+    const resources = (): Record<string, Resource> => ({
+      config: { start: () => ({}), halt: () => {}, _status: "stopped" },
+      api: {
+        dependencies: { required: ["config"], optional: ["cache"] },
+        start: () => ({}),
+        halt: () => {},
+        _status: "stopped",
+      },
+    });
+
+    test("topologicalSort orders around a missing optional dependency", () => {
+      expect(topologicalSort(resources())).toEqual(["config", "api"]);
+    });
+
+    test("topologicalSort still throws for a missing required dependency", () => {
+      const withMissingRequired = {
+        ...resources(),
+        worker: {
+          dependencies: { required: ["queue"], optional: ["cache"] },
+          start: () => ({}),
+          halt: () => {},
+          _status: "stopped",
+        } as Resource,
+      };
+      expect(() => topologicalSort(withMissingRequired)).toThrow(
+        'Resource "worker" depends on "queue" which doesn\'t exist'
+      );
+    });
+
+    test("a missing optional dependency draws no edge", () => {
+      const topology = buildTopology(resources(), topologicalSort(resources()));
+
+      expect(topology.graph).toEqual({ config: [], api: ["config"] });
+      expect(topology.dependents).toEqual({ config: ["api"], api: [] });
+      expect(topology.depths).toEqual({ config: 0, api: 1 });
+      expect(toMermaid(topology)).not.toContain("cache");
+      expect(toDot(topology)).not.toContain("cache");
+    });
+  });
 });

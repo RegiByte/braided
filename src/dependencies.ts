@@ -36,3 +36,16 @@ export function normalizeDependencies(
 
   return { required, optional, all };
 }
+
+/**
+ * The dependencies that are edges in a system of `resources`: every required
+ * one, and each optional one the system has. An optional dependency the
+ * system lacks is no edge; its dependent starts with `undefined` for it.
+ */
+export function dependencyEdges(
+  deps: DependenciesSpec | undefined,
+  resources: Record<string, unknown>
+): readonly string[] {
+  const { required, all } = normalizeDependencies(deps);
+  return all.filter((id) => required.includes(id) || Object.hasOwn(resources, id));
+}

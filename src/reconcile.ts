@@ -12,7 +12,7 @@ import type {
   SystemConfig,
   SystemReconcileResult,
 } from "./resource";
-import { normalizeDependencies } from "./dependencies";
+import { dependencyEdges } from "./dependencies";
 import { topologicalSort } from "./topological-sort";
 import { buildTopology } from "./topology";
 import { publicView, startInOrder, UNAVAILABLE } from "./system";
@@ -26,8 +26,11 @@ import { publicView, startInOrder, UNAVAILABLE } from "./system";
  *   configuration's `halt`)
  * - changed and added resources are started, with every resource that depends
  *   on them, in dependency order, receiving the untouched instances and the
- *   ones just started
+ *   ones just started; one of those that was running is halted first
  * - every other resource keeps its instance, untouched
+ *
+ * An optional dependency absent from a configuration is no edge in it. Adding
+ * it restarts its dependents on it; removing it restarts them without it.
  *
  * A dependent is always restarted with what it depends on, so no instance
  * holds a reference to a halted one.
@@ -43,7 +46,7 @@ import { publicView, startInOrder, UNAVAILABLE } from "./system";
  * @param started - The started system to move from
  * @param nextConfig - The configuration to move to
  * @returns Promise resolving to the next started system, its errors and what moved
- * @throws Error if the next configuration has a circular or missing dependency,
+ * @throws Error if the next configuration has a circular or missing required dependency,
  *   before anything is halted
  */
 export async function reconcileSystem<
@@ -64,13 +67,17 @@ export async function reconcileSystem<
   );
   const added = Object.keys(nextConfig).filter((id) => !(id in prevConfig));
 
-  const toHalt = withDependents(prev, moved);
+  const dropped = withDependents(prev, moved);
   const toStart = new Set([
-    ...[...toHalt].filter((id) => id in nextConfig),
+    ...[...dropped].filter((id) => id in nextConfig),
     ...withDependents(
       next,
       [...moved, ...added].filter((id) => id in nextConfig)
     ),
+  ]);
+  const toHalt = new Set([
+    ...dropped,
+    ...[...toStart].filter((id) => id in prevConfig),
   ]);
 
   const previous = started as Record<string, unknown>;
@@ -125,7 +132,7 @@ function withDependents(
 ): Set<string> {
   const dependents: Record<string, string[]> = {};
   for (const [id, resource] of Object.entries(resources)) {
-    for (const dep of normalizeDependencies(resource.dependencies).all) {
+    for (const dep of dependencyEdges(resource.dependencies, resources)) {
       (dependents[dep] ??= []).push(id);
     }
   }

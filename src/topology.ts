@@ -6,7 +6,7 @@
  */
 
 import type { Resource } from "./resource";
-import { normalizeDependencies } from "./dependencies";
+import { dependencyEdges } from "./dependencies";
 
 /**
  * A resource node in the topology graph
@@ -93,7 +93,7 @@ export function buildTopology(
   // Build forward graph (resource -> dependencies)
   const graph: Record<string, string[]> = {};
   for (const id of Object.keys(resources)) {
-    graph[id] = [...normalizeDependencies(resources[id].dependencies).all];
+    graph[id] = [...dependencyEdges(resources[id].dependencies, resources)];
   }
 
   // Build reverse graph (resource -> dependents)
